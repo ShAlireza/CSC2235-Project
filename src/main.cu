@@ -4,10 +4,10 @@
 #include <cstdio>
 #include <cstring>
 #include <cuda_runtime.h>
+#include <iostream>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
 
 #define DATA_SIZE 1024 * 1024 * 256
 #define SRC_GPU 0
@@ -89,7 +89,8 @@ void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
   }
 }
 
-void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events, cudaStream_t stream) {
+void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
+                  cudaStream_t stream) {
   CHECK_CUDA(cudaSetDevice(device));
   long size;
 
@@ -127,7 +128,7 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events, cudaStream
   }
 
   int *result;
-  CHECK_CUDA(cudaMalloc(&result, sizeof(int)));
+  CHECK_CUDA(cudaMallocAsync(&result, sizeof(int), stream));
 
   int smemSize = numThreads * sizeof(long);
   void *kernelArgs[] = {
@@ -148,8 +149,8 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events, cudaStream
   CHECK_CUDA(cudaEventRecord(events[1], stream));
 
   int validate_result;
-  CHECK_CUDA(cudaMemcpy(&validate_result, result, sizeof(int),
-                        cudaMemcpyDeviceToHost));
+  CHECK_CUDA(cudaMemcpyAsync(&validate_result, result, sizeof(int),
+                             cudaMemcpyDeviceToHost, stream));
 
   *timing_events = events;
   printf("Final result from GPU: %d\n", validate_result);
@@ -226,8 +227,18 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamSynchronize(src_stream));
+
+  cudaEvent_t *sum_reduction_events;
+  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, dest_stream);
+
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamSynchronize(dest_stream));
+
+  float reduction_time;
+  CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
+                                  sum_reduction_events[1]));
+
+  printf("Reduction time on GPU: %f\n", reduction_time);
 
   float src_host_timing, host_dest_timing;
 
@@ -238,14 +249,6 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
 
   printf("Src to Host: %f\n", src_host_timing);
   printf("Host to Dest: %f\n", host_dest_timing);
-  cudaEvent_t *sum_reduction_events;
-  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, dest_stream);
-
-  float reduction_time;
-  CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
-                                  sum_reduction_events[1]));
-
-  printf("Reduction time on GPU: %f\n", reduction_time);
 }
 
 void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
