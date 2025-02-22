@@ -74,25 +74,6 @@ extern "C" __global__ void reduceSinglePassMultiBlockCG(const int *g_idata,
   }
 }
 
-void call_reduceSinglePassMultiBlockCG(long size, int threads, int numBlocks,
-                                       int *d_idata, int *d_odata) {
-  int smemSize = threads * sizeof(long);
-  void *kernelArgs[] = {
-      (void *)&d_idata,
-      (void *)&d_odata,
-      (void *)&size,
-  };
-
-  dim3 dimBlock(threads, 1, 1);
-  dim3 dimGrid(numBlocks, 1, 1);
-
-  std::cout << "Threads: " << threads << std::endl;
-  std::cout << "Blocks: " << numBlocks << std::endl;
-
-  cudaLaunchCooperativeKernel((void *)reduceSinglePassMultiBlockCG, dimGrid,
-                              dimBlock, kernelArgs, smemSize, NULL);
-}
-
 void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
                             int &threads) {
   if (n == 1) {
@@ -108,9 +89,9 @@ void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
   }
 }
 
-void run_cuda_sum(int device, int *data) {
+void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events, cudaStream_t stream) {
+  CHECK_CUDA(cudaSetDevice(device));
   long size;
-  long bytes;
 
   // Set the device to be used
   cudaDeviceProp prop = {0};
@@ -118,7 +99,6 @@ void run_cuda_sum(int device, int *data) {
   CHECK_CUDA(cudaGetDeviceProperties(&prop, device));
 
   size = DATA_SIZE;
-  bytes = DATA_SIZE * sizeof(int);
 
   // Determine the launch configuration (threads, blocks)
   int maxThreads = 0;
@@ -149,12 +129,29 @@ void run_cuda_sum(int device, int *data) {
   int *result;
   CHECK_CUDA(cudaMallocManaged(&result, sizeof(int)));
 
-  call_reduceSinglePassMultiBlockCG(size, numThreads, numBlocks, data, result);
+  int smemSize = numThreads * sizeof(long);
+  void *kernelArgs[] = {
+      (void *)&data,
+      (void *)&result,
+      (void *)&size,
+  };
+
+  dim3 dimBlock(numThreads, 1, 1);
+  dim3 dimGrid(numBlocks, 1, 1);
+  cudaEvent_t *events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
+  cudaEventCreate(&events[0]);
+  cudaEventCreate(&events[1]);
+
+  CHECK_CUDA(cudaEventRecord(events[0], stream));
+  cudaLaunchCooperativeKernel((void *)reduceSinglePassMultiBlockCG, dimGrid,
+                              dimBlock, kernelArgs, smemSize, stream);
+  CHECK_CUDA(cudaEventRecord(events[1], stream));
 
   int validate_result;
   CHECK_CUDA(cudaMemcpy(&validate_result, result, sizeof(int),
                         cudaMemcpyDeviceToHost));
 
+  *timing_events = events;
   printf("Final result from GPU: %d\n", validate_result);
 }
 
@@ -241,7 +238,14 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
 
   printf("Src to Host: %f\n", src_host_timing);
   printf("Host to Dest: %f\n", host_dest_timing);
-  run_cuda_sum(DEST_GPU, dest_data);
+  cudaEvent_t *sum_reduction_events;
+  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, dest_stream);
+
+  float reduction_time;
+  CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
+                                  sum_reduction_events[1]));
+
+  printf("Reduction time on GPU: %f\n", reduction_time);
 }
 
 void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
