@@ -21,15 +21,15 @@
 // Transfer data host-to-device or device-to-host async
 void transfer_data(int gpu_id, int *src_data, int *host_buffer,
                    size_t data_size, cudaStream_t stream,
-                   cudaEvent_t *timing_events, bool dtoh = true) {
+                   cudaEvent_t **timing_events, bool dtoh = true) {
   CHECK_CUDA(cudaSetDevice(gpu_id));
 
-  timing_events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
+  cudaEvent_t * events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
 
-  CHECK_CUDA(cudaEventCreate(&timing_events[0]));
-  CHECK_CUDA(cudaEventCreate(&timing_events[1]));
+  CHECK_CUDA(cudaEventCreate(&events[0]));
+  CHECK_CUDA(cudaEventCreate(&events[1]));
 
-  CHECK_CUDA(cudaEventRecord(timing_events[0], stream));
+  CHECK_CUDA(cudaEventRecord(events[0], stream));
   if (dtoh) {
     CHECK_CUDA(cudaMemcpyAsync(host_buffer, src_data, data_size,
                                cudaMemcpyDeviceToHost, stream));
@@ -37,7 +37,8 @@ void transfer_data(int gpu_id, int *src_data, int *host_buffer,
     CHECK_CUDA(cudaMemcpyAsync(src_data, host_buffer, data_size,
                                cudaMemcpyHostToDevice, stream));
   }
-  CHECK_CUDA(cudaEventRecord(timing_events[1], stream));
+  CHECK_CUDA(cudaEventRecord(events[1], stream));
+  *timing_events = events;
 }
 
 // TODO: Validate data on destination
@@ -53,7 +54,7 @@ void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
   }
   // Transfer data to GPU
   transfer_data(gpu_id, gpu_buffer, host_buffer, data_size, stream,
-                timing_events, false);
+                &timing_events, false);
 }
 
 int main(int argc, char **argv) {
@@ -71,10 +72,10 @@ int main(int argc, char **argv) {
   memset(data, 0, DATA_SIZE * sizeof(int));
 
   cudaEvent_t *timing_events_src_host;
-  transfer_data(SRC_GPU, gpu_data, data, DATA_SIZE * sizeof(int), stream, timing_events_src_host);
+  transfer_data(SRC_GPU, gpu_data, data, DATA_SIZE * sizeof(int), stream, &timing_events_src_host);
 
   cudaEvent_t *timing_events_host_dest;
-  transfer_data(DEST_GPU, gpu_data, data, DATA_SIZE * sizeof(int), stream, timing_events_host_dest, false);
+  transfer_data(DEST_GPU, gpu_data, data, DATA_SIZE * sizeof(int), stream, &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaStreamSynchronize(stream));
 
