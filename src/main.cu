@@ -132,7 +132,7 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events, cudaStream
   int smemSize = numThreads * sizeof(long);
   void *kernelArgs[] = {
       (void *)&data,
-      (void *)result,
+      (void *)&result,
       (void *)&size,
   };
 
