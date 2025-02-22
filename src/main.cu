@@ -127,12 +127,12 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events, cudaStream
   }
 
   int *result;
-  CHECK_CUDA(cudaMallocManaged(&result, sizeof(int)));
+  CHECK_CUDA(cudaMalloc(&result, sizeof(int)));
 
   int smemSize = numThreads * sizeof(long);
   void *kernelArgs[] = {
-      (void *)&data,
-      (void *)&result,
+      (void *)data,
+      (void *)result,
       (void *)&size,
   };
 
