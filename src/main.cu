@@ -78,7 +78,6 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamCreate(&src_stream));
   cudaEvent_t *timing_events_src_host;
-  printf("Data generated on src GPU, sending from src to host\n");
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int),
                 src_stream, &timing_events_src_host);
 
@@ -86,7 +85,6 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaStreamCreate(&dest_stream));
 
   cudaEvent_t *timing_events_host_dest;
-  printf("Data received on host, sending from host to dest\n");
   transfer_data(DEST_GPU, dest_data, host_buffer, DATA_SIZE * sizeof(int), dest_stream,
                 &timing_events_host_dest, false);
 
@@ -115,7 +113,6 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
   memset(host_buffer, 0, DATA_SIZE * sizeof(int));
 
   cudaEvent_t *timing_events_src_host;
-  printf("Data generated on src GPU, sending from src to host\n");
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int), src_stream,
                 &timing_events_src_host);
 
@@ -131,7 +128,6 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
   CHECK_CUDA(cudaStreamCreate(&dest_stream));
 
   cudaEvent_t *timing_events_host_dest;
-  printf("Data received on host, sending from host to dest\n");
   transfer_data(DEST_GPU, dest_data, &result, sizeof(int), dest_stream,
                 &timing_events_host_dest, false);
 
@@ -149,6 +145,13 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
 
   printf("Src to Host: %f\n", src_host_timing);
   printf("Host to Dest: %f\n", host_dest_timing);
+
+  CHECK_CUDA(cudaSetDevice(DEST_GPU));
+  int validate_result;
+  CHECK_CUDA(cudaMemcpy(&validate_result, dest_data, sizeof(int),
+                        cudaMemcpyDeviceToHost));
+  printf("Final result from GPU: %d\n", validate_result);
+  printf("Final result from Intermediate HOST: %d\n", result);
 }
 
 int main(int argc, char **argv) {
