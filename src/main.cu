@@ -58,6 +58,7 @@ void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
 }
 
 int main(int argc, char **argv) {
+
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   int *data = (int *)malloc(DATA_SIZE * sizeof(int));
   int *gpu_data;
@@ -72,13 +73,15 @@ int main(int argc, char **argv) {
   memset(data, 0, DATA_SIZE * sizeof(int));
 
   cudaEvent_t *timing_events_src_host;
+  printf("Data generated on src GPU, sending from src to host\n");
   transfer_data(SRC_GPU, gpu_data, data, DATA_SIZE * sizeof(int), src_stream, &timing_events_src_host);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamCreate(&dest_stream));
 
   cudaEvent_t *timing_events_host_dest;
-  transfer_data(DEST_GPU, gpu_data, data, DATA_SIZE * sizeof(int), src_stream, &timing_events_host_dest, false);
+  printf("Data received on host, sending from host to dest\n");
+  transfer_data(DEST_GPU, gpu_data, data, DATA_SIZE * sizeof(int), dest_stream, &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamSynchronize(src_stream));
