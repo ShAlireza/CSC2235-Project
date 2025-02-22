@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 
-#define DATA_SIZE (1 << 18)
+#define DATA_SIZE 1024 * 1024 * 256
 #define SRC_GPU 0
 #define DEST_GPU 1
 
