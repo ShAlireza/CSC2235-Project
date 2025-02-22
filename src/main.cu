@@ -75,6 +75,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
 
   cudaStream_t src_stream, dest_stream;
 
+  CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamCreate(&src_stream));
   cudaEvent_t *timing_events_src_host;
   printf("Data generated on src GPU, sending from src to host\n");
@@ -108,6 +109,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
 void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data, int *dest_data) {
   cudaStream_t src_stream, dest_stream;
 
+  CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamCreate(&src_stream));
 
   memset(host_buffer, 0, DATA_SIZE * sizeof(int));
