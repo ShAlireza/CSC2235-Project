@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 
 
   auto start = std::chrono::high_resolution_clock::now();
-  long result = openmp_sum(data, DATA_SIZE);
+  int result = openmp_sum(data, DATA_SIZE);
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 
   cudaEvent_t *timing_events_host_dest;
   printf("Data received on host, sending from host to dest\n");
-  transfer_data(DEST_GPU, gpu_data, &result, sizeof(long), dest_stream,
+  transfer_data(DEST_GPU, gpu_data, &result, sizeof(int), dest_stream,
                 &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
