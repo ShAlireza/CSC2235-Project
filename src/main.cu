@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstring>
 #include <cuda_runtime.h>
-#include <iostream>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +24,7 @@
 
 namespace cg = cooperative_groups;
 
+// Sum reduction GPU kernels
 __device__ void reduceBlock(long *sdata, const cg::thread_block &cta) {
   const unsigned int tid = cta.thread_rank();
   cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(cta);
@@ -74,6 +74,7 @@ extern "C" __global__ void reduceSinglePassMultiBlockCG(const int *g_idata,
   }
 }
 
+// finding the optimzal number of threads and blocks for the given kernel
 void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
                             int &threads) {
   if (n == 1) {
@@ -96,7 +97,6 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
 
   // Set the device to be used
   cudaDeviceProp prop = {0};
-  CHECK_CUDA(cudaSetDevice(device));
   CHECK_CUDA(cudaGetDeviceProperties(&prop, device));
 
   size = DATA_SIZE;
@@ -127,9 +127,11 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
     numBlocks = numBlocksPerSm * numSms;
   }
 
+  // Allocate memory for the result on the device
   int *result;
   CHECK_CUDA(cudaMallocAsync(&result, sizeof(int), stream));
 
+  // Inputs to the sum reduction kernel
   int smemSize = numThreads * sizeof(long);
   void *kernelArgs[] = {
       (void *)&data,
@@ -148,14 +150,16 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
                               dimBlock, kernelArgs, smemSize, stream);
   CHECK_CUDA(cudaEventRecord(events[1], stream));
 
+  // Validate the results on GPU
   int validate_result;
   CHECK_CUDA(cudaMemcpyAsync(&validate_result, result, sizeof(int),
                              cudaMemcpyDeviceToHost, stream));
 
   *timing_events = events;
-  printf("Final result from GPU: %d\n", validate_result);
+  printf("Final result from GPU(compute on destination): %d\n", validate_result);
 }
 
+// OpenMP implementation of sum reduction using all available cpu cores
 long openmp_sum(int *data, size_t size) {
   long sum = 0;
   int num_threads = omp_get_max_threads();
@@ -190,13 +194,10 @@ void transfer_data(int gpu_id, int *src_data, int *host_buffer,
   *timing_events = events;
 }
 
-// TODO: Validate data on destination
-
-// Generate random data on CPU and send it to GPU with id i
+// Generate random data on CPU and send it to GPU with id gpu_id
 void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
                    size_t data_size, cudaStream_t stream) {
   // Generate random data on CPU
-  //
   cudaEvent_t *timing_events;
   for (int j = 0; j < data_size / sizeof(int); j++) {
     host_buffer[j] = rand();
@@ -206,8 +207,11 @@ void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
                 &timing_events, false);
 }
 
+// Baseline implementation of sum reduction on destination GPU without any pipelining
 void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
                             int *src_data, int *dest_data) {
+  printf("Starting compute on destination Scenario\n");
+  // resetting the host buffer 
   memset(host_buffer, 0, DATA_SIZE * sizeof(int));
 
   cudaStream_t src_stream, dest_stream;
@@ -215,6 +219,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamCreate(&src_stream));
   cudaEvent_t *timing_events_src_host;
+  // Transfer data from SRC to HOST buffer
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int),
                 src_stream, &timing_events_src_host);
 
@@ -222,12 +227,14 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaStreamCreate(&dest_stream));
 
   cudaEvent_t *timing_events_host_dest;
+  // Transfer data from HOST to DEST buffer
   transfer_data(DEST_GPU, dest_data, host_buffer, DATA_SIZE * sizeof(int),
                 dest_stream, &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamSynchronize(src_stream));
 
+  // Do the final global sum on destination GPU
   cudaEvent_t *sum_reduction_events;
   run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, dest_stream);
 
@@ -253,17 +260,21 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
 
 void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
                      int *dest_data) {
+  printf("Starting compute on path Scenario\n");
   cudaStream_t src_stream, dest_stream;
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamCreate(&src_stream));
 
+  // resetting the host buffer
   memset(host_buffer, 0, DATA_SIZE * sizeof(int));
 
   cudaEvent_t *timing_events_src_host;
+  // Transfer data from SRC to HOST buffer
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int),
                 src_stream, &timing_events_src_host);
 
+  // Do the sum reduction on the intermediate host using openmp
   auto start = std::chrono::high_resolution_clock::now();
   int result = openmp_sum(host_buffer, DATA_SIZE);
   auto end = std::chrono::high_resolution_clock::now();
@@ -276,6 +287,7 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
   CHECK_CUDA(cudaStreamCreate(&dest_stream));
 
   cudaEvent_t *timing_events_host_dest;
+  // Transfer data from HOST to DEST buffer
   transfer_data(DEST_GPU, dest_data, &result, sizeof(int), dest_stream,
                 &timing_events_host_dest, false);
 
@@ -303,6 +315,7 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
 }
 
 int main(int argc, char **argv) {
+  // Initialize the initial state of the cluster (src data and buffers)
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   int *host_buffer = (int *)malloc(DATA_SIZE * sizeof(int));
   int *src_gpu_data;
@@ -317,6 +330,11 @@ int main(int argc, char **argv) {
   compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
                          dest_gpu_data);
   compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data);
+
+
+  cudaFree(src_gpu_data);
+  cudaFree(dest_gpu_data);
+  free(host_buffer);
 
   return 0;
 }
