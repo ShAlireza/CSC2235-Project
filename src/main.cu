@@ -63,21 +63,27 @@ int main(int argc, char **argv) {
   int *gpu_data;
   CHECK_CUDA(cudaMalloc((void **)&gpu_data, DATA_SIZE * sizeof(int)));
 
-  cudaStream_t stream;
+  cudaStream_t src_stream, dest_stream;
 
-  CHECK_CUDA(cudaStreamCreate(&stream));
+  CHECK_CUDA(cudaStreamCreate(&src_stream));
 
-  generate_data(0, data, gpu_data, DATA_SIZE * sizeof(int), stream);
+  generate_data(0, data, gpu_data, DATA_SIZE * sizeof(int), src_stream);
 
   memset(data, 0, DATA_SIZE * sizeof(int));
 
   cudaEvent_t *timing_events_src_host;
-  transfer_data(SRC_GPU, gpu_data, data, DATA_SIZE * sizeof(int), stream, &timing_events_src_host);
+  transfer_data(SRC_GPU, gpu_data, data, DATA_SIZE * sizeof(int), src_stream, &timing_events_src_host);
+
+  CHECK_CUDA(cudaSetDevice(DEST_GPU));
+  CHECK_CUDA(cudaStreamCreate(&dest_stream));
 
   cudaEvent_t *timing_events_host_dest;
-  transfer_data(DEST_GPU, gpu_data, data, DATA_SIZE * sizeof(int), stream, &timing_events_host_dest, false);
+  transfer_data(DEST_GPU, gpu_data, data, DATA_SIZE * sizeof(int), src_stream, &timing_events_host_dest, false);
 
-  CHECK_CUDA(cudaStreamSynchronize(stream));
+  CHECK_CUDA(cudaSetDevice(SRC_GPU));
+  CHECK_CUDA(cudaStreamSynchronize(src_stream));
+  CHECK_CUDA(cudaSetDevice(DEST_GPU));
+  CHECK_CUDA(cudaStreamSynchronize(dest_stream));
 
   float src_host_timing, host_dest_timing;
 
