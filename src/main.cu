@@ -333,9 +333,10 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
 
   CHECK_CUDA(cudaStreamSynchronize(0));
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
-  transfer_data(DEST_GPU, &dest_gpu_data[start_index],
-                &host_buffer[start_index], chunk_size, 0, &second_copy_events,
-                false);
+  // transfer_data(DEST_GPU, &dest_gpu_data[start_index],
+  //               &host_buffer[start_index], chunk_size, 0, &second_copy_events,
+  //               false);
+  CHECK_CUDA(cudaMemcpy(&dest_gpu_data[start_index], &host_buffer[start_index], chunk_size, cudaMemcpyHostToDevice));
   printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
@@ -357,8 +358,8 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
 }
 
 void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
-                                     int *host_buffer, int *src_gpu_data,
-                                     int *dest_gpu_data, int threads_count) {
+                                      int *host_buffer, int *src_gpu_data,
+                                      int *dest_gpu_data, int threads_count) {
 
   int *sum_results;
 
@@ -372,9 +373,10 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
     printf("Starting thread %d\n", i);
     printf("Chunk size: %ld\n", items_per_thread * sizeof(int));
     printf("Start index: %d\n", i * items_per_thread);
-    threads[i] = std::thread(compute_on_destination_thread, src_gpu, dest_gpu,
-                             host_buffer, src_gpu_data, dest_gpu_data,
-                             &sum_results[i], i * items_per_thread, items_per_thread * sizeof(int), i);
+    threads[i] =
+        std::thread(compute_on_destination_thread, src_gpu, dest_gpu,
+                    host_buffer, src_gpu_data, dest_gpu_data, &sum_results[i],
+                    i * items_per_thread, items_per_thread * sizeof(int), i);
   }
 
   for (int i = 0; i < threads_count; i++) {
@@ -400,7 +402,7 @@ int main(int argc, char **argv) {
   // compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
   //                        dest_gpu_data);
   compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-                               dest_gpu_data, 4);
+                                   dest_gpu_data, 4);
   compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data);
 
   cudaFree(src_gpu_data);
