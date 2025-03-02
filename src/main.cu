@@ -364,6 +364,9 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
   int chunk_size = DATA_SIZE / threads_count;
 
   for (int i = 0; i < threads_count; i++) {
+    printf("Starting thread %d\n", i);
+    printf("Chunk size: %d\n", chunk_size);
+    printf("Start index: %d\n", i * chunk_size);
     threads[i] = std::thread(compute_on_destination_thread, src_gpu, dest_gpu,
                              host_buffer, src_gpu_data, dest_gpu_data,
                              &sum_results[i], i * chunk_size, chunk_size, i);
