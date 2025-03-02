@@ -92,7 +92,7 @@ void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
 }
 
 void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
-                  int *result, int chunk_size) {
+                  cudaStream_t stream, int chunk_size) {
   CHECK_CUDA(cudaSetDevice(device));
   long size;
 
@@ -127,14 +127,16 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   if (numBlocks > numBlocksPerSm * numSms) {
     numBlocks = numBlocksPerSm * numSms;
   }
-  int *result_d;
-  CHECK_CUDA(cudaMalloc((void **)&result_d, sizeof(int)));
+
+  // Allocate memory for the result on the device
+  int *result;
+  CHECK_CUDA(cudaMallocAsync(&result, sizeof(int), stream));
 
   // Inputs to the sum reduction kernel
   int smemSize = numThreads * sizeof(long);
   void *kernelArgs[] = {
       (void *)&data,
-      (void *)&result_d,
+      (void *)&result,
       (void *)&size,
   };
 
@@ -144,16 +146,16 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   cudaEventCreate(&events[0]);
   cudaEventCreate(&events[1]);
 
-  CHECK_CUDA(cudaEventRecord(events[0]));
+  CHECK_CUDA(cudaEventRecord(events[0], stream));
   cudaLaunchCooperativeKernel((void *)reduceSinglePassMultiBlockCG, dimGrid,
-                              dimBlock, kernelArgs, smemSize);
-  CHECK_CUDA(cudaEventRecord(events[1]));
-  cudaEventSynchronize(events[1]);
+                              dimBlock, kernelArgs, smemSize, stream);
+  CHECK_CUDA(cudaEventRecord(events[1], stream));
 
   // Validate the results on GPU
   int validate_result;
-  CHECK_CUDA(cudaMemcpy(&validate_result, result_d, sizeof(int),
-                             cudaMemcpyDeviceToHost));
+  CHECK_CUDA(cudaMemcpyAsync(&validate_result, result, sizeof(int),
+                             cudaMemcpyDeviceToHost, stream));
+  CHECK_CUDA(cudaStreamSynchronize(stream));
 
   *timing_events = events;
   printf("Final result from GPU(compute on destination): %d\n",
@@ -174,8 +176,8 @@ long openmp_sum(int *data, size_t size) {
 
 // Transfer data host-to-device or device-to-host async
 void transfer_data(int gpu_id, int *src_data, int *host_buffer,
-                   size_t data_size,
-                   cudaEvent_t **timing_events, bool dtoh = true) {
+                   size_t data_size, cudaEvent_t **timing_events,
+                   bool dtoh = true) {
   CHECK_CUDA(cudaSetDevice(gpu_id));
 
   cudaEvent_t *events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
@@ -204,8 +206,8 @@ void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
     host_buffer[j] = rand();
   }
   // Transfer data to GPU
-  transfer_data(gpu_id, gpu_buffer, host_buffer, data_size,
-                &timing_events, false);
+  transfer_data(gpu_id, gpu_buffer, host_buffer, data_size, &timing_events,
+                false);
 }
 
 // Baseline implementation of sum reduction on destination GPU without any
@@ -223,7 +225,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *timing_events_src_host;
   // Transfer data from SRC to HOST buffer
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int),
-                 &timing_events_src_host);
+                &timing_events_src_host);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamCreate(&dest_stream));
@@ -231,7 +233,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *timing_events_host_dest;
   // Transfer data from HOST to DEST buffer
   transfer_data(DEST_GPU, dest_data, host_buffer, DATA_SIZE * sizeof(int),
-                 &timing_events_host_dest, false);
+                &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamSynchronize(src_stream));
@@ -240,7 +242,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *sum_reduction_events;
   int *sum_result;
   CHECK_CUDA(cudaMalloc((void **)&sum_result, sizeof(int)));
-  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, sum_result, DATA_SIZE);
+  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, 0, DATA_SIZE);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamSynchronize(dest_stream));
@@ -276,7 +278,7 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
   cudaEvent_t *timing_events_src_host;
   // Transfer data from SRC to HOST buffer
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int),
-                 &timing_events_src_host);
+                &timing_events_src_host);
 
   // Do the sum reduction on the intermediate host using openmp
   auto start = std::chrono::high_resolution_clock::now();
@@ -292,7 +294,7 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
 
   cudaEvent_t *timing_events_host_dest;
   // Transfer data from HOST to DEST buffer
-  transfer_data(DEST_GPU, dest_data, &result, sizeof(int), 
+  transfer_data(DEST_GPU, dest_data, &result, sizeof(int),
                 &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
@@ -323,15 +325,18 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
                                    int *sum_result, int start_index,
                                    int chunk_size, int thread_index) {
 
-  cudaEvent_t *first_copy_events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
-  cudaEvent_t *second_copy_events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
+  cudaEvent_t *first_copy_events =
+      (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
+  cudaEvent_t *second_copy_events =
+      (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaEventCreate(&first_copy_events[0]));
   CHECK_CUDA(cudaEventCreate(&first_copy_events[1]));
   printf("[%d]: Starting thread\n", thread_index);
   printf("[%d]: Chunk size: %d\n", thread_index, chunk_size);
   printf("[%d]: Start index: %d\n", thread_index, start_index);
-  // transfer_data(SRC_GPU, &src_gpu_data[start_index], &host_buffer[start_index],
+  // transfer_data(SRC_GPU, &src_gpu_data[start_index],
+  // &host_buffer[start_index],
   //               chunk_size,  &first_copy_events);
 
   CHECK_CUDA(cudaEventRecord(first_copy_events[0]));
@@ -341,7 +346,6 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
 
   // CHECK_CUDA(cudaStreamSynchronize(0));
   printf("[%d]: First copy done\n", thread_index);
-
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaEventCreate(&second_copy_events[0]));
@@ -357,8 +361,8 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
-  run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
-              sum_result, chunk_size / sizeof(int)); // TODO: Refactor chunk size
+  run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events, 0,
+               chunk_size / sizeof(int)); // TODO: Refactor chunk size
 
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
@@ -419,7 +423,8 @@ int main(int argc, char **argv) {
   //                        dest_gpu_data);
   compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
                                    dest_gpu_data, 4);
-  compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data);
+  // compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
+  // dest_gpu_data);
 
   cudaFree(src_gpu_data);
   cudaFree(dest_gpu_data);
