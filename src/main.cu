@@ -127,12 +127,14 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   if (numBlocks > numBlocksPerSm * numSms) {
     numBlocks = numBlocksPerSm * numSms;
   }
+  int *result_d;
+  CHECK_CUDA(cudaMalloc((void **)&result_d, sizeof(int)));
 
   // Inputs to the sum reduction kernel
   int smemSize = numThreads * sizeof(long);
   void *kernelArgs[] = {
       (void *)&data,
-      (void *)&result,
+      (void *)&result_d,
       (void *)&size,
   };
 
@@ -150,7 +152,7 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
 
   // Validate the results on GPU
   int validate_result;
-  CHECK_CUDA(cudaMemcpy(&validate_result, result, sizeof(int),
+  CHECK_CUDA(cudaMemcpy(&validate_result, result_d, sizeof(int),
                              cudaMemcpyDeviceToHost));
 
   *timing_events = events;
