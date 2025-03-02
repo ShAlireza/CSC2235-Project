@@ -171,7 +171,7 @@ long openmp_sum(int *data, size_t size) {
 
 // Transfer data host-to-device or device-to-host async
 void transfer_data(int gpu_id, int *src_data, int *host_buffer,
-                   size_t data_size, cudaStream_t stream,
+                   size_t data_size,
                    cudaEvent_t **timing_events, bool dtoh = true) {
   CHECK_CUDA(cudaSetDevice(gpu_id));
 
@@ -180,7 +180,7 @@ void transfer_data(int gpu_id, int *src_data, int *host_buffer,
   CHECK_CUDA(cudaEventCreate(&events[0]));
   CHECK_CUDA(cudaEventCreate(&events[1]));
 
-  CHECK_CUDA(cudaEventRecord(events[0], stream));
+  CHECK_CUDA(cudaEventRecord(events[0]));
   if (dtoh) {
     CHECK_CUDA(
         cudaMemcpy(host_buffer, src_data, data_size, cudaMemcpyDeviceToHost));
@@ -188,7 +188,7 @@ void transfer_data(int gpu_id, int *src_data, int *host_buffer,
     CHECK_CUDA(
         cudaMemcpy(src_data, host_buffer, data_size, cudaMemcpyHostToDevice));
   }
-  CHECK_CUDA(cudaEventRecord(events[1], stream));
+  CHECK_CUDA(cudaEventRecord(events[1]));
   *timing_events = events;
 }
 
@@ -327,15 +327,17 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   printf("[%d]: Chunk size: %d\n", thread_index, chunk_size);
   printf("[%d]: Start index: %d\n", thread_index, start_index);
   transfer_data(SRC_GPU, &src_gpu_data[start_index], &host_buffer[start_index],
-                chunk_size, 0, &first_copy_events);
-  printf("[%d]: First copy done\n", thread_index);
+                chunk_size,  &first_copy_events);
 
   CHECK_CUDA(cudaStreamSynchronize(0));
+  printf("[%d]: First copy done\n", thread_index);
+
+
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
-  // transfer_data(DEST_GPU, &dest_gpu_data[start_index],
-  //               &host_buffer[start_index], chunk_size, 0, &second_copy_events,
-  //               false);
-  CHECK_CUDA(cudaMemcpy(&dest_gpu_data[start_index], &host_buffer[start_index], chunk_size, cudaMemcpyHostToDevice));
+  transfer_data(DEST_GPU, &dest_gpu_data[start_index],
+                &host_buffer[start_index], chunk_size, &second_copy_events,
+                false);
+  CHECK_CUDA(cudaStreamSynchronize(0));
   printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
