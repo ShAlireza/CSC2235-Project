@@ -92,7 +92,7 @@ void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
 }
 
 void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
-                  cudaStream_t stream, int chunk_size) {
+                  cudaStream_t stream, int chunk_size, int *result) {
   CHECK_CUDA(cudaSetDevice(device));
   long size;
 
@@ -129,8 +129,8 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   }
 
   // Allocate memory for the result on the device
-  int *result;
-  CHECK_CUDA(cudaMallocAsync(&result, sizeof(int), stream));
+  // int *result;
+  // CHECK_CUDA(cudaMallocAsync(&result, sizeof(int), stream));
 
   // Inputs to the sum reduction kernel
   int smemSize = numThreads * sizeof(long);
@@ -242,7 +242,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *sum_reduction_events;
   int *sum_result;
   CHECK_CUDA(cudaMalloc((void **)&sum_result, sizeof(int)));
-  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, 0, DATA_SIZE);
+  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, 0, DATA_SIZE, sum_result);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamSynchronize(dest_stream));
@@ -362,7 +362,7 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
 
   cudaEvent_t *sum_reduction_events;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events, 0,
-               chunk_size / sizeof(int)); // TODO: Refactor chunk size
+               chunk_size / sizeof(int), sum_result); // TODO: Refactor chunk size
 
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
