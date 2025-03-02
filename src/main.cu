@@ -201,7 +201,7 @@ void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
     host_buffer[j] = rand();
   }
   // Transfer data to GPU
-  transfer_data(gpu_id, gpu_buffer, host_buffer, data_size, stream,
+  transfer_data(gpu_id, gpu_buffer, host_buffer, data_size,
                 &timing_events, false);
 }
 
@@ -220,7 +220,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *timing_events_src_host;
   // Transfer data from SRC to HOST buffer
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int),
-                src_stream, &timing_events_src_host);
+                 &timing_events_src_host);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamCreate(&dest_stream));
@@ -228,7 +228,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *timing_events_host_dest;
   // Transfer data from HOST to DEST buffer
   transfer_data(DEST_GPU, dest_data, host_buffer, DATA_SIZE * sizeof(int),
-                dest_stream, &timing_events_host_dest, false);
+                 &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaStreamSynchronize(src_stream));
@@ -273,7 +273,7 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
   cudaEvent_t *timing_events_src_host;
   // Transfer data from SRC to HOST buffer
   transfer_data(SRC_GPU, src_data, host_buffer, DATA_SIZE * sizeof(int),
-                src_stream, &timing_events_src_host);
+                 &timing_events_src_host);
 
   // Do the sum reduction on the intermediate host using openmp
   auto start = std::chrono::high_resolution_clock::now();
@@ -289,7 +289,7 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
 
   cudaEvent_t *timing_events_host_dest;
   // Transfer data from HOST to DEST buffer
-  transfer_data(DEST_GPU, dest_data, &result, sizeof(int), dest_stream,
+  transfer_data(DEST_GPU, dest_data, &result, sizeof(int), 
                 &timing_events_host_dest, false);
 
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
