@@ -327,14 +327,16 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   printf("[%d]: Starting thread\n", thread_index);
   printf("[%d]: Chunk size: %d\n", thread_index, chunk_size);
   printf("[%d]: Start index: %d\n", thread_index, start_index);
-  transfer_data(SRC_GPU, src_gpu_data + start_index, host_buffer + start_index,
+  transfer_data(SRC_GPU, &src_gpu_data[start_index], &host_buffer[start_index],
                 chunk_size, 0, &first_copy_events);
+  printf("[%d]: First copy done\n", thread_index);
 
   CHECK_CUDA(cudaStreamSynchronize(0));
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
-  transfer_data(DEST_GPU, dest_gpu_data + start_index,
-                host_buffer + start_index, chunk_size, 0, &second_copy_events,
+  transfer_data(DEST_GPU, &dest_gpu_data[start_index],
+                &host_buffer[start_index], chunk_size, 0, &second_copy_events,
                 false);
+  printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
