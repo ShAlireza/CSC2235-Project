@@ -327,6 +327,7 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   transfer_data(SRC_GPU, src_gpu_data + start_index, host_buffer + start_index,
                 chunk_size, 0, &first_copy_events);
 
+  CHECK_CUDA(cudaStreamSynchronize(0));
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   transfer_data(DEST_GPU, dest_gpu_data + start_index,
                 host_buffer + start_index, chunk_size, 0, &second_copy_events,
@@ -336,6 +337,7 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
                sum_result, 0);
 
+  CHECK_CUDA(cudaStreamSynchronize(0));
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
                                   first_copy_events[1]));
