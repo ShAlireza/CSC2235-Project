@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <thread>
 
-#define DATA_SIZE 1024 * 1024 * 256
+#define DATA_SIZE 4
 #define SRC_GPU 0
 #define DEST_GPU 1
 
