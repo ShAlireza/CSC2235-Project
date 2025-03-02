@@ -7,6 +7,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
 
 #define DATA_SIZE 1024 * 1024 * 256
 #define SRC_GPU 0
@@ -91,7 +92,7 @@ void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
 }
 
 void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
-                  cudaStream_t stream) {
+                  int *result, cudaStream_t stream) {
   CHECK_CUDA(cudaSetDevice(device));
   long size;
 
@@ -127,10 +128,6 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
     numBlocks = numBlocksPerSm * numSms;
   }
 
-  // Allocate memory for the result on the device
-  int *result;
-  CHECK_CUDA(cudaMallocAsync(&result, sizeof(int), stream));
-
   // Inputs to the sum reduction kernel
   int smemSize = numThreads * sizeof(long);
   void *kernelArgs[] = {
@@ -151,12 +148,13 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   CHECK_CUDA(cudaEventRecord(events[1], stream));
 
   // Validate the results on GPU
-  int validate_result;
-  CHECK_CUDA(cudaMemcpyAsync(&validate_result, result, sizeof(int),
-                             cudaMemcpyDeviceToHost, stream));
+  // int validate_result;
+  // CHECK_CUDA(cudaMemcpy(&validate_result, result, sizeof(int),
+  //                            cudaMemcpyDeviceToHost));
 
   *timing_events = events;
-  printf("Final result from GPU(compute on destination): %d\n", validate_result);
+  // printf("Final result from GPU(compute on destination): %d\n",
+  //        validate_result);
 }
 
 // OpenMP implementation of sum reduction using all available cpu cores
@@ -184,11 +182,11 @@ void transfer_data(int gpu_id, int *src_data, int *host_buffer,
 
   CHECK_CUDA(cudaEventRecord(events[0], stream));
   if (dtoh) {
-    CHECK_CUDA(cudaMemcpyAsync(host_buffer, src_data, data_size,
-                               cudaMemcpyDeviceToHost, stream));
+    CHECK_CUDA(
+        cudaMemcpy(host_buffer, src_data, data_size, cudaMemcpyDeviceToHost));
   } else {
-    CHECK_CUDA(cudaMemcpyAsync(src_data, host_buffer, data_size,
-                               cudaMemcpyHostToDevice, stream));
+    CHECK_CUDA(
+        cudaMemcpy(src_data, host_buffer, data_size, cudaMemcpyHostToDevice));
   }
   CHECK_CUDA(cudaEventRecord(events[1], stream));
   *timing_events = events;
@@ -207,11 +205,12 @@ void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
                 &timing_events, false);
 }
 
-// Baseline implementation of sum reduction on destination GPU without any pipelining
+// Baseline implementation of sum reduction on destination GPU without any
+// pipelining
 void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
                             int *src_data, int *dest_data) {
   printf("Starting compute on destination Scenario\n");
-  // resetting the host buffer 
+  // resetting the host buffer
   memset(host_buffer, 0, DATA_SIZE * sizeof(int));
 
   cudaStream_t src_stream, dest_stream;
@@ -236,7 +235,10 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
 
   // Do the final global sum on destination GPU
   cudaEvent_t *sum_reduction_events;
-  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, dest_stream);
+  int *sum_result;
+  CHECK_CUDA(cudaMalloc((void **)&sum_result, sizeof(int)));
+  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, sum_result,
+               dest_stream);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamSynchronize(dest_stream));
@@ -314,6 +316,62 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
   printf("Final result from Intermediate HOST: %d\n", result);
 }
 
+void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
+                                   int *src_gpu_data, int *dest_gpu_data,
+                                   int *sum_result, int start_index,
+                                   int chunk_size, int thread_index) {
+
+  cudaEvent_t *first_copy_events;
+  cudaEvent_t *second_copy_events;
+  CHECK_CUDA(cudaSetDevice(SRC_GPU));
+  transfer_data(SRC_GPU, src_gpu_data + start_index, host_buffer + start_index,
+                chunk_size, 0, &first_copy_events);
+
+  CHECK_CUDA(cudaSetDevice(DEST_GPU));
+  transfer_data(DEST_GPU, dest_gpu_data + start_index,
+                host_buffer + start_index, chunk_size, 0, &second_copy_events,
+                false);
+
+  cudaEvent_t *sum_reduction_events;
+  run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
+               sum_result, 0);
+
+  float first_copy_time, second_copy_time, reduction_time;
+  CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
+                                  first_copy_events[1]));
+  CHECK_CUDA(cudaEventElapsedTime(&second_copy_time, second_copy_events[0],
+                                  second_copy_events[1]));
+  CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
+                                  sum_reduction_events[1]));
+
+  printf("[%d]: First copy time: %f\n", thread_index, first_copy_time);
+  printf("[%d]: Second copy time: %f\n", thread_index, second_copy_time);
+  printf("[%d]: Reduction time: %f\n", thread_index, reduction_time);
+}
+
+void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
+                                     int *host_buffer, int *src_gpu_data,
+                                     int *dest_gpu_data, int threads_count) {
+
+  int *sum_results;
+
+  CHECK_CUDA(cudaSetDevice(DEST_GPU));
+  CHECK_CUDA(cudaMalloc((void **)&sum_results, sizeof(int) * threads_count));
+
+  std::thread threads[threads_count];
+  int chunk_size = DATA_SIZE / threads_count;
+
+  for (int i = 0; i < threads_count; i++) {
+    threads[i] = std::thread(compute_on_destination_thread, src_gpu, dest_gpu,
+                             host_buffer, src_gpu_data, dest_gpu_data,
+                             &sum_results[i], i * chunk_size, chunk_size, i);
+  }
+
+  for (int i = 0; i < threads_count; i++) {
+    threads[i].join();
+  }
+}
+
 int main(int argc, char **argv) {
   // Initialize the initial state of the cluster (src data and buffers)
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
@@ -327,10 +385,13 @@ int main(int argc, char **argv) {
 
   generate_data(0, host_buffer, src_gpu_data, DATA_SIZE * sizeof(int), 0);
 
-  compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-                         dest_gpu_data);
-  compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data);
+  // Run the two scenarios
 
+  // compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
+  //                        dest_gpu_data);
+  compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
+                               dest_gpu_data, 4);
+  compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data);
 
   cudaFree(src_gpu_data);
   cudaFree(dest_gpu_data);
