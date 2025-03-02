@@ -324,6 +324,9 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *first_copy_events;
   cudaEvent_t *second_copy_events;
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
+  printf("[%d]: Starting thread\n", thread_index);
+  printf("[%d]: Chunk size: %d\n", thread_index, chunk_size);
+  printf("[%d]: Start index: %d\n", thread_index, start_index);
   transfer_data(SRC_GPU, src_gpu_data + start_index, host_buffer + start_index,
                 chunk_size, 0, &first_copy_events);
 
