@@ -92,7 +92,7 @@ void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
 }
 
 void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
-                  int *result, cudaStream_t stream) {
+                  int *result) {
   CHECK_CUDA(cudaSetDevice(device));
   long size;
 
@@ -142,10 +142,10 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   cudaEventCreate(&events[0]);
   cudaEventCreate(&events[1]);
 
-  CHECK_CUDA(cudaEventRecord(events[0], stream));
+  CHECK_CUDA(cudaEventRecord(events[0]));
   cudaLaunchCooperativeKernel((void *)reduceSinglePassMultiBlockCG, dimGrid,
-                              dimBlock, kernelArgs, smemSize, stream);
-  CHECK_CUDA(cudaEventRecord(events[1], stream));
+                              dimBlock, kernelArgs, smemSize);
+  CHECK_CUDA(cudaEventRecord(events[1]));
 
   // Validate the results on GPU
   // int validate_result;
@@ -237,8 +237,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *sum_reduction_events;
   int *sum_result;
   CHECK_CUDA(cudaMalloc((void **)&sum_result, sizeof(int)));
-  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, sum_result,
-               dest_stream);
+  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, sum_result);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamSynchronize(dest_stream));
@@ -341,9 +340,9 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
 
   cudaEvent_t *sum_reduction_events;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
-               sum_result, 0);
+               sum_result);
 
-  // CHECK_CUDA(cudaStreamSynchronize(0));
+  CHECK_CUDA(cudaStreamSynchronize(0));
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
                                   first_copy_events[1]));
