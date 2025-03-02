@@ -333,33 +333,23 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
   CHECK_CUDA(cudaEventCreate(&first_copy_events[0]));
   CHECK_CUDA(cudaEventCreate(&first_copy_events[1]));
-  printf("[%d]: Starting thread\n", thread_index);
-  printf("[%d]: Chunk size: %d\n", thread_index, chunk_size);
-  printf("[%d]: Start index: %d\n", thread_index, start_index);
-  // transfer_data(SRC_GPU, &src_gpu_data[start_index],
-  // &host_buffer[start_index],
-  //               chunk_size,  &first_copy_events);
+  // printf("[%d]: Starting thread\n", thread_index);
+  // printf("[%d]: Chunk size: %d\n", thread_index, chunk_size);
+  // printf("[%d]: Start index: %d\n", thread_index, start_index);
 
   CHECK_CUDA(cudaEventRecord(first_copy_events[0]));
   CHECK_CUDA(cudaMemcpy(&host_buffer[start_index], &src_gpu_data[start_index],
                         chunk_size, cudaMemcpyDeviceToHost));
   CHECK_CUDA(cudaEventRecord(first_copy_events[1]));
 
-  // CHECK_CUDA(cudaStreamSynchronize(0));
-  printf("[%d]: First copy done\n", thread_index);
-
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaEventCreate(&second_copy_events[0]));
   CHECK_CUDA(cudaEventCreate(&second_copy_events[1]));
-  // transfer_data(DEST_GPU, &dest_gpu_data[start_index],
-  //               &host_buffer[start_index], chunk_size, &second_copy_events,
-  //               false);
+
   CHECK_CUDA(cudaEventRecord(second_copy_events[0]));
   CHECK_CUDA(cudaMemcpy(&dest_gpu_data[start_index], &host_buffer[start_index],
                         chunk_size, cudaMemcpyHostToDevice));
   CHECK_CUDA(cudaEventRecord(second_copy_events[1]));
-  // CHECK_CUDA(cudaStreamSynchronize(0));
-  printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events, 0,
@@ -373,9 +363,9 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
                                   sum_reduction_events[1]));
 
-  printf("[%d]: First copy time: %f\n", thread_index, first_copy_time);
-  printf("[%d]: Second copy time: %f\n", thread_index, second_copy_time);
-  printf("[%d]: Reduction time: %f\n", thread_index, reduction_time);
+  // printf("[%d]: First copy time: %f\n", thread_index, first_copy_time);
+  // printf("[%d]: Second copy time: %f\n", thread_index, second_copy_time);
+  // printf("[%d]: Reduction time: %f\n", thread_index, reduction_time);
 }
 
 void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
@@ -390,10 +380,8 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
   std::thread threads[threads_count];
   int items_per_thread = DATA_SIZE / threads_count;
 
+  auto start_time = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < threads_count; i++) {
-    printf("Starting thread %d\n", i);
-    printf("Chunk size: %ld\n", items_per_thread * sizeof(int));
-    printf("Start index: %d\n", i * items_per_thread);
     threads[i] =
         std::thread(compute_on_destination_thread, src_gpu, dest_gpu,
                     host_buffer, src_gpu_data, dest_gpu_data, &sum_results[i],
@@ -403,6 +391,10 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
   for (int i = 0; i < threads_count; i++) {
     threads[i].join();
   }
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_time - start_time);
+  printf("Total time: %ld\n", duration.count());
 }
 
 int main(int argc, char **argv) {
