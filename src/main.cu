@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cuda_runtime.h>
+#include <mutex>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +25,8 @@
   }
 
 namespace cg = cooperative_groups;
+
+std::mutex mtx; // Global mutex
 
 // Sum reduction GPU kernels
 __device__ void reduceBlock(long *sdata, const cg::thread_block &cta) {
@@ -163,12 +166,15 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
 
 // OpenMP implementation of sum reduction using all available cpu cores
 long openmp_sum(int *data, size_t size) {
+  std::unique_lock<std::mutex> lock(mtx);
   long sum = 0;
   int num_threads = omp_get_max_threads();
 #pragma omp parallel for simd reduction(+ : sum) num_threads(num_threads)
   for (size_t i = 0; i < size; i++) {
     sum += data[i];
   }
+
+  lock.unlock(); // Manually unlocking if needed
 
   return sum;
 }
@@ -341,7 +347,9 @@ void compute_on_path_thread(int src_gpu, int dest_gpu, int *host_buffer,
 
   // Do the sum reduction on the intermediate host using openmp
   auto start = std::chrono::high_resolution_clock::now();
+  // Lock
   int result = openmp_sum(&host_buffer[start_index], chunk_size / sizeof(int));
+  // Unlock
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -353,8 +361,8 @@ void compute_on_path_thread(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaEventCreate(&second_copy_events[1]));
 
   CHECK_CUDA(cudaEventRecord(second_copy_events[0]));
-  CHECK_CUDA(cudaMemcpy(&dest_gpu_data[start_index], &result,
-                        sizeof(int), cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(&dest_gpu_data[start_index], &result, sizeof(int),
+                        cudaMemcpyHostToDevice));
   CHECK_CUDA(cudaEventRecord(second_copy_events[1]));
   CHECK_CUDA(cudaStreamSynchronize(0));
   float first_copy_time, second_copy_time, reduction_time;
@@ -368,10 +376,9 @@ void compute_on_path_thread(int src_gpu, int dest_gpu, int *host_buffer,
   // printf("[%d]: Reduction time: %f\n", thread_index, reduction_time);
 }
 
-int compute_pipelined(int src_gpu, int dest_gpu,
-                                     int *host_buffer, int *src_gpu_data,
-                                     int *dest_gpu_data, int threads_count,
-                                     bool on_path = false) {
+int compute_pipelined(int src_gpu, int dest_gpu, int *host_buffer,
+                      int *src_gpu_data, int *dest_gpu_data, int threads_count,
+                      bool on_path = false) {
 
   int *sum_results[threads_count];
 
@@ -429,9 +436,9 @@ int main(int argc, char **argv) {
   for (int i = 0; i < 7; i++) {
     int total_time = 0;
     for (int j = 0; j < iterations; j++) {
-      total_time += compute_pipelined(
-          SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data,
-          threads_counts[i]);
+      total_time +=
+          compute_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
+                            dest_gpu_data, threads_counts[i]);
     }
     printf("Total time for %d threads: %f\n", threads_counts[i],
            (float)total_time / iterations);
@@ -441,14 +448,13 @@ int main(int argc, char **argv) {
   for (int i = 0; i < 7; i++) {
     int total_time = 0;
     for (int j = 0; j < iterations; j++) {
-      total_time += compute_pipelined(
-          SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data,
-          threads_counts[i], true);
+      total_time +=
+          compute_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
+                            dest_gpu_data, threads_counts[i], true);
     }
     printf("Total time for %d threads: %f\n", threads_counts[i],
            (float)total_time / iterations);
   }
-
 
   cudaFree(src_gpu_data);
   cudaFree(dest_gpu_data);
