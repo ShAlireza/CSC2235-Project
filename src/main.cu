@@ -361,15 +361,15 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
   CHECK_CUDA(cudaMalloc((void **)&sum_results, sizeof(int) * threads_count));
 
   std::thread threads[threads_count];
-  int chunk_size = DATA_SIZE * sizeof(int) / threads_count;
+  int items_per_thread = DATA_SIZE / threads_count;
 
   for (int i = 0; i < threads_count; i++) {
     printf("Starting thread %d\n", i);
-    printf("Chunk size: %d\n", chunk_size);
-    printf("Start index: %d\n", i * chunk_size);
+    printf("Chunk size: %ld\n", items_per_thread * sizeof(int));
+    printf("Start index: %d\n", i * items_per_thread);
     threads[i] = std::thread(compute_on_destination_thread, src_gpu, dest_gpu,
                              host_buffer, src_gpu_data, dest_gpu_data,
-                             &sum_results[i], i * chunk_size, chunk_size, i);
+                             &sum_results[i], i * items_per_thread, items_per_thread * sizeof(int), i);
   }
 
   for (int i = 0; i < threads_count; i++) {
