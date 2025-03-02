@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstring>
 #include <cuda_runtime.h>
-#include <mutex>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,8 +24,6 @@
   }
 
 namespace cg = cooperative_groups;
-
-std::mutex mtx; // Global mutex
 
 // Sum reduction GPU kernels
 __device__ void reduceBlock(long *sdata, const cg::thread_block &cta) {
@@ -166,15 +163,12 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
 
 // OpenMP implementation of sum reduction using all available cpu cores
 long openmp_sum(int *data, size_t size) {
-  std::unique_lock<std::mutex> lock(mtx);
   long sum = 0;
   int num_threads = omp_get_max_threads();
 #pragma omp parallel for simd reduction(+ : sum) num_threads(num_threads)
   for (size_t i = 0; i < size; i++) {
     sum += data[i];
   }
-
-  lock.unlock(); // Manually unlocking if needed
 
   return sum;
 }
