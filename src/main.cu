@@ -424,7 +424,7 @@ int main(int argc, char **argv) {
   compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
                          dest_gpu_data);
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 7; i++) {
     int total_time = 0;
     for (int j = 0; j < iterations; j++) {
       total_time += compute_on_destination_pipelined(
