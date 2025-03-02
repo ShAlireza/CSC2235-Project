@@ -347,8 +347,8 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
                                   first_copy_events[1]));
-  CHECK_CUDA(cudaEventElapsedTime(&second_copy_time, second_copy_events[0],
-                                  second_copy_events[1]));
+  // CHECK_CUDA(cudaEventElapsedTime(&second_copy_time, second_copy_events[0],
+  //                                 second_copy_events[1]));
   CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
                                   sum_reduction_events[1]));
 
