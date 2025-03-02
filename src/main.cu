@@ -340,6 +340,7 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaMemcpy(&host_buffer[start_index], &src_gpu_data[start_index],
                         chunk_size, cudaMemcpyDeviceToHost));
   CHECK_CUDA(cudaEventRecord(first_copy_events[1]));
+  CHECK_CUDA(cudaStreamSynchronize(0));
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaEventCreate(&second_copy_events[0]));
@@ -349,11 +350,13 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaMemcpy(&dest_gpu_data[start_index], &host_buffer[start_index],
                         chunk_size, cudaMemcpyHostToDevice));
   CHECK_CUDA(cudaEventRecord(second_copy_events[1]));
+  CHECK_CUDA(cudaStreamSynchronize(0));
 
   cudaEvent_t *sum_reduction_events;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events, 0,
                chunk_size / sizeof(int),
                sum_result); // TODO: Refactor chunk size
+  CHECK_CUDA(cudaStreamSynchronize(0));
 
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
