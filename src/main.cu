@@ -149,13 +149,13 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   cudaEventSynchronize(events[1]);
 
   // Validate the results on GPU
-  // int validate_result;
-  // CHECK_CUDA(cudaMemcpy(&validate_result, result, sizeof(int),
-  //                            cudaMemcpyDeviceToHost));
+  int validate_result;
+  CHECK_CUDA(cudaMemcpy(&validate_result, result, sizeof(int),
+                             cudaMemcpyDeviceToHost));
 
   *timing_events = events;
-  // printf("Final result from GPU(compute on destination): %d\n",
-  //        validate_result);
+  printf("Final result from GPU(compute on destination): %d\n",
+         validate_result);
 }
 
 // OpenMP implementation of sum reduction using all available cpu cores
