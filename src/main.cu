@@ -355,20 +355,20 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
-  run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
-              sum_result, chunk_size / sizeof(int)); // TODO: Refactor chunk size
+  // run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
+  //             sum_result, chunk_size / sizeof(int)); // TODO: Refactor chunk size
 
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
                                   first_copy_events[1]));
   CHECK_CUDA(cudaEventElapsedTime(&second_copy_time, second_copy_events[0],
                                   second_copy_events[1]));
-  CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
-                                  sum_reduction_events[1]));
+  // CHECK_CUDA(cudaEventElapsedTime(&reduction_time, sum_reduction_events[0],
+  //                                 sum_reduction_events[1]));
 
   printf("[%d]: First copy time: %f\n", thread_index, first_copy_time);
   printf("[%d]: Second copy time: %f\n", thread_index, second_copy_time);
-  printf("[%d]: Reduction time: %f\n", thread_index, reduction_time);
+  // printf("[%d]: Reduction time: %f\n", thread_index, reduction_time);
 }
 
 void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
