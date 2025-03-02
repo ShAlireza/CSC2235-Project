@@ -10,8 +10,8 @@
 #include <thread>
 
 #define ITEMS_COUNT 1024 * 1024 * 256 * 4
-#define SRC_GPU 0
-#define DEST_GPU 1
+#define SRC_GPU 2
+#define DEST_GPU 6
 
 #define CHECK_CUDA(call)                                                       \
   {                                                                            \
