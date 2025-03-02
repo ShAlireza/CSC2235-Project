@@ -411,8 +411,8 @@ int main(int argc, char **argv) {
 
   // Run the two scenarios
 
-  // compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-  //                        dest_gpu_data);
+  compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
+                         dest_gpu_data);
   compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
                                    dest_gpu_data, 4);
   // compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
