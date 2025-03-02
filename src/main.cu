@@ -110,7 +110,8 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
 
   int numBlocks = 0;
   int numThreads = 0;
-  getNumBlocksAndThreads(items_count, maxBlocks, maxThreads, numBlocks, numThreads);
+  getNumBlocksAndThreads(items_count, maxBlocks, maxThreads, numBlocks,
+                         numThreads);
 
   // We calculate the occupancy to know how many block can actually fit on the
   // GPU
@@ -367,9 +368,9 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   // printf("[%d]: Reduction time: %f\n", thread_index, reduction_time);
 }
 
-void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
-                                      int *host_buffer, int *src_gpu_data,
-                                      int *dest_gpu_data, int threads_count) {
+int compute_on_destination_pipelined(int src_gpu, int dest_gpu,
+                                     int *host_buffer, int *src_gpu_data,
+                                     int *dest_gpu_data, int threads_count) {
 
   int *sum_results[threads_count];
 
@@ -393,7 +394,8 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
   auto end_time = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
       end_time - start_time);
-  printf("Total time: %ld\n", duration.count());
+  // printf("Total time: %ld\n", duration.count());
+  return duration.count();
 }
 
 int main(int argc, char **argv) {
@@ -410,28 +412,29 @@ int main(int argc, char **argv) {
   generate_data(0, host_buffer, src_gpu_data, ITEMS_COUNT * sizeof(int), 0);
 
   // Run the two scenarios
+  //
+  int threads_counts[5] = {1, 4, 8, 16, 32};
+  int iterations = 10;
 
   printf("Starting compute on destination withouth any threading\n");
   compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
                          dest_gpu_data);
-  printf("Starting compute on destination with 1 thread\n");
-  compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-                                   dest_gpu_data, 1);
-  printf("Starting compute on destination with 4 thread\n");
-  compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-                                   dest_gpu_data, 4);
 
-  printf("Starting compute on destination with 8 thread\n");
-  compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-                                   dest_gpu_data, 8);
+  for (int i = 0; i < 5; i++) {
+    int total_time = 0;
+    for (int j = 0; j < iterations; j++) {
+      total_time += compute_on_destination_pipelined(
+          SRC_GPU, DEST_GPU, host_buffer, src_gpu_data, dest_gpu_data,
+          threads_counts[i]);
+    }
+    printf("Total time for %d threads: %f\n", threads_counts[i],
+           (float)total_time / iterations);
+  }
 
-  printf("Starting compute on destination with 16 thread\n");
-  compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-                                   dest_gpu_data, 16);
-
-  printf("Starting compute on destination with 32 thread\n");
-  compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
-                                   dest_gpu_data, 32);
+  // printf("Starting compute on destination with 32 thread\n");
+  // compute_on_destination_pipelined(SRC_GPU, DEST_GPU, host_buffer,
+  // src_gpu_data,
+  //                                  dest_gpu_data, 32);
   // compute_on_path(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
   // dest_gpu_data);
 
