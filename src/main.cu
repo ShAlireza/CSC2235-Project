@@ -320,27 +320,36 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
                                    int *sum_result, int start_index,
                                    int chunk_size, int thread_index) {
 
-  cudaEvent_t *first_copy_events;
-  cudaEvent_t *second_copy_events;
+  cudaEvent_t *first_copy_events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
+  cudaEvent_t *second_copy_events = (cudaEvent_t *)malloc(2 * sizeof(cudaEvent_t));
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
+  CHECK_CUDA(cudaEventCreate(&first_copy_events[0]));
+  CHECK_CUDA(cudaEventCreate(&first_copy_events[1]));
   printf("[%d]: Starting thread\n", thread_index);
   printf("[%d]: Chunk size: %d\n", thread_index, chunk_size);
   printf("[%d]: Start index: %d\n", thread_index, start_index);
   // transfer_data(SRC_GPU, &src_gpu_data[start_index], &host_buffer[start_index],
   //               chunk_size,  &first_copy_events);
+
+  CHECK_CUDA(cudaEventRecord(first_copy_events[0]));
   CHECK_CUDA(cudaMemcpy(&host_buffer[start_index], &src_gpu_data[start_index],
                         chunk_size, cudaMemcpyDeviceToHost));
+  CHECK_CUDA(cudaEventRecord(first_copy_events[1]));
 
   // CHECK_CUDA(cudaStreamSynchronize(0));
   printf("[%d]: First copy done\n", thread_index);
 
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
+  CHECK_CUDA(cudaEventCreate(&second_copy_events[0]));
+  CHECK_CUDA(cudaEventCreate(&second_copy_events[1]));
   // transfer_data(DEST_GPU, &dest_gpu_data[start_index],
   //               &host_buffer[start_index], chunk_size, &second_copy_events,
   //               false);
+  CHECK_CUDA(cudaEventRecord(second_copy_events[0]));
   CHECK_CUDA(cudaMemcpy(&dest_gpu_data[start_index], &host_buffer[start_index],
                         chunk_size, cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaEventRecord(second_copy_events[1]));
   // CHECK_CUDA(cudaStreamSynchronize(0));
   printf("[%d]: Second copy done\n", thread_index);
 
