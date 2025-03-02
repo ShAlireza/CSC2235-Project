@@ -441,7 +441,7 @@ int main(int argc, char **argv) {
 
   cudaFree(src_gpu_data);
   cudaFree(dest_gpu_data);
-  free(host_buffer);
+  cudaFreeHost(host_buffer);
 
   return 0;
 }
