@@ -417,8 +417,8 @@ int main(int argc, char **argv) {
 
   // Run the two scenarios
   //
-  int threads_counts[5] = {1, 4, 8, 16, 32};
-  int iterations = 1;
+  int threads_counts[7] = {1, 4, 8, 16, 32, 64, 128};
+  int iterations = 5;
 
   printf("Starting compute on destination withouth any threading\n");
   compute_on_destination(SRC_GPU, DEST_GPU, host_buffer, src_gpu_data,
