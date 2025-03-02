@@ -203,7 +203,7 @@ void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
   // Generate random data on CPU
   cudaEvent_t *timing_events;
   for (int j = 0; j < data_size / sizeof(int); j++) {
-    host_buffer[j] = rand();
+    host_buffer[j] = 1;
   }
   // Transfer data to GPU
   transfer_data(gpu_id, gpu_buffer, host_buffer, data_size, &timing_events,
