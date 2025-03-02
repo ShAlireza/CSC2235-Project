@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <thread>
 
-#define DATA_SIZE 16
+#define DATA_SIZE 1024 * 1024 * 256
 #define SRC_GPU 0
 #define DEST_GPU 1
 
@@ -362,7 +362,6 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
-  // int *result;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events, 0,
                chunk_size / sizeof(int), sum_result); // TODO: Refactor chunk size
 
