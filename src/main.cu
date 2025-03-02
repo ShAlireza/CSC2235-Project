@@ -238,7 +238,7 @@ void compute_on_destination(int src_gpu, int dest_gpu, int *host_buffer,
   cudaEvent_t *sum_reduction_events;
   int *sum_result;
   CHECK_CUDA(cudaMalloc((void **)&sum_result, sizeof(int)));
-  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, sum_result);
+  run_cuda_sum(DEST_GPU, dest_data, &sum_reduction_events, sum_result, DATA_SIZE);
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaStreamSynchronize(dest_stream));
@@ -356,7 +356,7 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
 
   cudaEvent_t *sum_reduction_events;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events,
-               sum_result);
+              sum_result, chunk_size / sizeof(int)); // TODO: Refactor chunk size
 
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
