@@ -152,14 +152,14 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   CHECK_CUDA(cudaEventRecord(events[1], stream));
 
   // Validate the results on GPU
-  int validate_result;
-  CHECK_CUDA(cudaMemcpyAsync(&validate_result, result, sizeof(int),
-                             cudaMemcpyDeviceToHost, stream));
+  // int validate_result;
+  // CHECK_CUDA(cudaMemcpyAsync(&validate_result, result, sizeof(int),
+  //                            cudaMemcpyDeviceToHost, stream));
   CHECK_CUDA(cudaStreamSynchronize(stream));
 
   *timing_events = events;
-  printf("Final result from GPU(compute on destination): %d\n",
-         validate_result);
+  // printf("Final result from GPU(compute on destination): %d\n",
+  //        validate_result);
   *result_out = result;
 }
 
