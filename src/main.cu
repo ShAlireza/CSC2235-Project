@@ -323,7 +323,7 @@ void compute_on_path(int src_gpu, int dest_gpu, int *host_buffer, int *src_data,
 
 void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
                                    int *src_gpu_data, int *dest_gpu_data,
-                                   int *sum_result, int start_index,
+                                   int **sum_result, int start_index,
                                    int chunk_size, int thread_index) {
 
   cudaEvent_t *first_copy_events =
@@ -362,9 +362,9 @@ void compute_on_destination_thread(int src_gpu, int dest_gpu, int *host_buffer,
   printf("[%d]: Second copy done\n", thread_index);
 
   cudaEvent_t *sum_reduction_events;
-  int *result;
+  // int *result;
   run_cuda_sum(DEST_GPU, dest_gpu_data + start_index, &sum_reduction_events, 0,
-               chunk_size / sizeof(int), &result); // TODO: Refactor chunk size
+               chunk_size / sizeof(int), sum_result); // TODO: Refactor chunk size
 
   float first_copy_time, second_copy_time, reduction_time;
   CHECK_CUDA(cudaEventElapsedTime(&first_copy_time, first_copy_events[0],
@@ -383,7 +383,7 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
                                       int *host_buffer, int *src_gpu_data,
                                       int *dest_gpu_data, int threads_count) {
 
-  int *sum_results;
+  int *sum_results[threads_count];
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaMalloc((void **)&sum_results, sizeof(int) * threads_count));
