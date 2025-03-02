@@ -340,13 +340,13 @@ void compute_on_path_thread(int src_gpu, int dest_gpu, int *host_buffer,
   CHECK_CUDA(cudaStreamSynchronize(0));
 
   // Do the sum reduction on the intermediate host using openmp
-  // auto start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
   int result = openmp_sum(host_buffer, ITEMS_COUNT);
-  // auto end = std::chrono::high_resolution_clock::now();
-  // auto duration =
-  //     std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  // printf("Timing for OpenMP sum: %ld\n", duration.count());
+  printf("Timing for OpenMP sum: %ld\n", duration.count());
 
   CHECK_CUDA(cudaSetDevice(DEST_GPU));
   CHECK_CUDA(cudaEventCreate(&second_copy_events[0]));
