@@ -92,7 +92,7 @@ void getNumBlocksAndThreads(long n, int maxBlocks, int maxThreads, int &blocks,
 }
 
 void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
-                  int *result) {
+                  int *result, int chunk_size) {
   CHECK_CUDA(cudaSetDevice(device));
   long size;
 
@@ -100,7 +100,7 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   cudaDeviceProp prop = {0};
   CHECK_CUDA(cudaGetDeviceProperties(&prop, device));
 
-  size = DATA_SIZE;
+  size = chunk_size;
 
   // Determine the launch configuration (threads, blocks)
   int maxThreads = 0;
@@ -146,6 +146,7 @@ void run_cuda_sum(int device, int *data, cudaEvent_t **timing_events,
   cudaLaunchCooperativeKernel((void *)reduceSinglePassMultiBlockCG, dimGrid,
                               dimBlock, kernelArgs, smemSize);
   CHECK_CUDA(cudaEventRecord(events[1]));
+  cudaEventSynchronize(events[1]);
 
   // Validate the results on GPU
   // int validate_result;
