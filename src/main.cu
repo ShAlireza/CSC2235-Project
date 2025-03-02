@@ -401,7 +401,8 @@ int compute_on_destination_pipelined(int src_gpu, int dest_gpu,
 int main(int argc, char **argv) {
   // Initialize the initial state of the cluster (src data and buffers)
   CHECK_CUDA(cudaSetDevice(SRC_GPU));
-  int *host_buffer = (int *)malloc(ITEMS_COUNT * sizeof(int));
+  int *host_buffer;
+  CHECK_CUDA(cudaMallocHost((void **)&host_buffer, ITEMS_COUNT * sizeof(int)));
   int *src_gpu_data;
   CHECK_CUDA(cudaMalloc((void **)&src_gpu_data, ITEMS_COUNT * sizeof(int)));
 
