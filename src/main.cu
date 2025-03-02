@@ -395,7 +395,7 @@ void compute_on_destination_pipelined(int src_gpu, int dest_gpu,
     printf("Start index: %d\n", i * items_per_thread);
     threads[i] =
         std::thread(compute_on_destination_thread, src_gpu, dest_gpu,
-                    host_buffer, src_gpu_data, dest_gpu_data, sum_results + i,
+                    host_buffer, src_gpu_data, dest_gpu_data, &sum_results[i],
                     i * items_per_thread, items_per_thread * sizeof(int), i);
   }
 
