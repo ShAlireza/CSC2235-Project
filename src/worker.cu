@@ -27,7 +27,8 @@ typedef struct {
     void ** workers;
     int num_workers;
 
-    void (*on_path)(void* chunk, int chunk_size);
+    // On_path functions return the result buffer size
+    void (*on_path)(void* chunk, int chunk_size, void ** result_buffer, int* result_buffer_size);
 } Worker;
 
 
@@ -58,15 +59,6 @@ void worker_run(Worker* worker) {
     for (int i = 0; i < worker->num_threads; i++) {
         threads[i].join();
     }
-
-
-
-    if (worker->is_sender) {
-        printf("I am the sender\n");
-        
-    } else {
-        printf("I am the reciever\n");
-    }
 }
 
 
@@ -82,9 +74,11 @@ void process(Worker* worker, int thread_id) {
         // memcopy data from the gpu to the host
         cudaMemcpy(worker->staged_data + thread_id * chunk_size, worker->data + thread_id * chunk_size, chunk_size, cudaMemcpyDeviceToHost);
         // Run onpath function, which reduces the data
-        worker->on_path(worker->staged_data + thread_id * chunk_size, chunk_size);
+        void *result_buffer;
+        int result_buffer_size;
+        worker->on_path(worker->staged_data + thread_id * chunk_size, chunk_size, &result_buffer, &result_buffer_size);
         // Send data to the other node
-        send(worker, thread_id, chunk_size, worker->staged_data + thread_id * chunk_size);
+        send(worker, thread_id, &result_buffer_size, &result_buffer);
     }
     
     if (!worker->is_sender) {
@@ -93,8 +87,58 @@ void process(Worker* worker, int thread_id) {
 }
 
 // crate send function
-void send(Worker* worker, int thread_id, int chunk_size, void* data) {
-    printf("Sending data from thread %d\n", thread_id);
+void send(Worker* worker, int thread_id, int *result_buffer_size, void** result_buffer) {
+    // We are going to send the data to the other node using RDMA
+    // We first need to send the result buffer size, so the other node knows how much data to expect
+
+
+    // We then send the result buffer
+
 }
 
 // onPath function
+
+
+
+
+// Create main function
+/*
+Main should first generate the data, then create the worker, then run the worker
+*/
+int main() {
+    int num_gpus = 2;
+    // array of pointers to buffers
+    int * host_buffers[num_gpus];
+    int * gpu_buffers[num_gpus];
+    int * src_gpu_ids[num_gpus];
+    // for each gpu, create host buffer and gpu buffer, then generate data
+    for (int i = 0; i < num_gpus; i++) {
+        cudaSetDevice(i);
+        int * host_buffer;
+        cudaMallocHost((void **)&host_buffer, ITEMS_COUNT * sizeof(int));
+        int * gpu_buffer;
+        cudaMalloc((void **)&gpu_buffer, ITEMS_COUNT * sizeof(int));
+        host_buffers[i] = host_buffer;
+        gpu_buffers[i] = gpu_buffer;
+        src_gpu_ids[i] = i;
+
+        // Generate data (in utils.h)
+        generate_data(i, host_buffer, gpu_buffer, ITEMS_COUNT * sizeof(int), i);
+    }
+
+    // We now need to create a worker for each gpu
+    Worker* workers[num_gpus];
+    // we cant loop here because we need to tell each worker if they are a sender or reciever
+    workers[0] = init_worker(true, 4, 0, gpu_buffers[0], host_buffers[0], ITEMS_COUNT * sizeof(int));
+    workers[1] = init_worker(false, 4, 1, gpu_buffers[1], host_buffers[1], ITEMS_COUNT * sizeof(int));
+
+
+    // Run workers
+    worker_run(workers[0]);
+    worker_run(workers[1]);
+
+    // Free workers
+    free_worker(workers[0]);
+    free_worker(workers[1]);
+    return 0;
+}
