@@ -1,4 +1,0 @@
-bistro/libucm_la-bistro_rv64.lo: bistro/bistro_rv64.c \
- /usr/include/stdc-predef.h ../../config.h
-/usr/include/stdc-predef.h:
-../../config.h:

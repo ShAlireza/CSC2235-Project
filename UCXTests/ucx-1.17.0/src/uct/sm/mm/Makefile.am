@@ -1,6 +1,0 @@
-#
-# Copyright (c) NVIDIA CORPORATION & AFFILIATES, 2001-2018. ALL RIGHTS RESERVED.
-# See file LICENSE for terms.
-#
-
-SUBDIRS = xpmem

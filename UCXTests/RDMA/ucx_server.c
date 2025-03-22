@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
 
@@ -64,11 +65,11 @@ void send_rkey_to_client(ucp_ep_h ep) {
     fprintf(stderr, "ucp_rkey_pack failed: %s\n", ucs_status_string(status));
     return;
   }
-  size_t msg_size = sizeof(rdma_info_t) + rkey_size;
+  size_t msg_size = sizeof(rdma_info_t); // + rkey_size;
   char *msg = malloc(msg_size);
   rdma_info_t *info = (rdma_info_t *)msg;
   info->remote_addr = (uint64_t)rdma_buffer;
-  memcpy(msg + sizeof(rdma_info_t), rkey_buffer, rkey_size);
+  // memcpy(msg + sizeof(rdma_info_t), rkey_buffer, rkey_size);
   printf("Message size is %ld, rkey size is %ld\n", msg_size, rkey_size);
   printf("Remote addr is %ld\n", info->remote_addr);
 
@@ -76,13 +77,16 @@ void send_rkey_to_client(ucp_ep_h ep) {
                                .cb.send = send_cb,
                                .user_data = NULL};
 
+  // char *txt = "Hello, UCX!";
+  char *x = (char *)malloc(sizeof(uint64_t));
+  memcpy(x, &info->remote_addr, sizeof(uint64_t));
   printf("Sending rkey and remote_addr to client\n");
-  void *req = ucp_am_send_nbx(ep, AM_ID, NULL, 0, msg, msg_size, &param);
+  void *req = ucp_am_send_nbx(ep, AM_ID, NULL, 0, x, sizeof(uint64_t), &param);
   printf("Send operation called\n");
   if (UCS_PTR_IS_PTR(req)) {
     // while (ucp_request_check_status(req) == UCS_INPROGRESS) {
-      // printf("Calling worker progress api\n");
-      // ucp_worker_progress(worker);
+    // printf("Calling worker progress api\n");
+    // ucp_worker_progress(worker);
     // }
     // printf("Freeing the request\n");
     // ucp_request_free(req);

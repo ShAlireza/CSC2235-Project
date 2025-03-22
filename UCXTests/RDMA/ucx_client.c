@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,28 +61,41 @@ ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
                           const ucp_am_recv_param_t *param) {
   ucp_ep_h ep = (ucp_ep_h)arg;
 
-  if (length < sizeof(rdma_info_t)) {
+  // if (length < sizeof(rdma_info_t)) {
+  //   fprintf(stderr, "Invalid RDMA info message\n");
+  //   return UCS_OK;
+  // }
+
+  printf("Header size is %ld\n", header_length);
+  if (data == NULL) {
     fprintf(stderr, "Invalid RDMA info message\n");
     return UCS_OK;
   }
+  // int *x = (int *)data;
+  // const rdma_info_t *info = (const rdma_info_t *)data;
+  // global_remote_addr = info->remote_addr;
+  // size_t rkey_size = length - sizeof(rdma_info_t);
+  // void *rkey_buf = (void *)((char *)data + sizeof(rdma_info_t));
+  printf("Message size is %ld\n", length);
+  // printf("Remote addr is %ld\n", info->remote_addr);
+  printf("x is %ld\n", *((uint64_t *)data));
+  // printf("Message: %s\n", (char *)data);
 
-  const rdma_info_t *info = (const rdma_info_t *)data;
-  global_remote_addr = info->remote_addr;
-  size_t rkey_size = length - sizeof(rdma_info_t);
-  void *rkey_buf = (void *)((char *)data + sizeof(rdma_info_t));
-  printf("Message size is %ld, rkey size is %ld\n", length, rkey_size);
-  printf("Remote addr is %ld\n", info->remote_addr);
+  // char *bytes = (char *)data;
+  // for (int i = 0; i < length; i++) {
+  //   printf("%d ", bytes[i]);
+  // }
 
   if (global_rkey != NULL) {
     ucp_rkey_destroy(global_rkey);
     global_rkey = NULL;
   }
 
-  ucs_status_t status = ucp_ep_rkey_unpack(ep, rkey_buf, &global_rkey);
-  if (status != UCS_OK) {
-    fprintf(stderr, "Failed to unpack rkey (%s)\n", ucs_status_string(status));
-    return status;
-  }
+  // ucs_status_t status = ucp_ep_rkey_unpack(ep, rkey_buf, &global_rkey);
+  // if (status != UCS_OK) {
+  //   fprintf(stderr, "Failed to unpack rkey (%s)\n", ucs_status_string(status));
+  //   return status;
+  // }
 
   fprintf(stderr, "Client: Received remote_addr = 0x%lx and unpacked rkey\n",
           global_remote_addr);
