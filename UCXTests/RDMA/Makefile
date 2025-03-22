@@ -1,5 +1,5 @@
 # UCX installation paths
-UCX_PATH = /home/tabbahch/Desktop/UCXTests/ucx-1.17.0/install
+# UCX_PATH = /opt/ucx-1.18.0
 UCX_INCLUDE = -I$(UCX_PATH)/include
 UCX_LIB = -L$(UCX_PATH)/lib -lucp -lucs
 
