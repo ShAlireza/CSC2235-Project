@@ -1,0 +1,12 @@
+#
+# Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+#
+# See file LICENSE for terms.
+#
+
+Name: ucx-ugni
+Description: Unified Communication X Library UGNI module
+Version: 1.17.0
+Libs:
+Libs.private:
+

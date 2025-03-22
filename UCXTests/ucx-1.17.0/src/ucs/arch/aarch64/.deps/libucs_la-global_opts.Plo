@@ -1,0 +1,3 @@
+arch/aarch64/libucs_la-global_opts.lo: arch/aarch64/global_opts.c \
+ /usr/include/stdc-predef.h
+/usr/include/stdc-predef.h:

@@ -1,0 +1,12 @@
+#
+# Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+#
+# See file LICENSE for terms.
+#
+
+Name: ucx-rocm
+Description: Unified Communication X Library ROCM module
+Version: 1.17.0
+Libs:
+Libs.private:
+
