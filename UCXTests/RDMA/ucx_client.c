@@ -71,14 +71,32 @@ ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
     fprintf(stderr, "Invalid RDMA info message\n");
     return UCS_OK;
   }
+  size_t rkey_size;
+  void *rkey_buf;
   // int *x = (int *)data;
   // const rdma_info_t *info = (const rdma_info_t *)data;
   // global_remote_addr = info->remote_addr;
-  // size_t rkey_size = length - sizeof(rdma_info_t);
-  // void *rkey_buf = (void *)((char *)data + sizeof(rdma_info_t));
   printf("Message size is %ld\n", length);
   // printf("Remote addr is %ld\n", info->remote_addr);
-  printf("x is %ld\n", *((uint64_t *)data));
+  if (length == sizeof(uint64_t)) {
+    printf("x is %ld\n", *((uint64_t *)data));
+    global_remote_addr = *((uint64_t *)data);
+  } else {
+    rkey_size = length;
+    rkey_buf = data;
+    fprintf(stderr, "Invalid RDMA info message\n");
+
+    ucs_status_t status = ucp_ep_rkey_unpack(ep, rkey_buf, &global_rkey);
+    if (status != UCS_OK) {
+      fprintf(stderr, "Failed to unpack rkey (%s)\n",
+              ucs_status_string(status));
+      return status;
+    }
+
+    rkey_received = 1;
+
+    return UCS_OK;
+  }
   // printf("Message: %s\n", (char *)data);
 
   // char *bytes = (char *)data;
@@ -91,15 +109,8 @@ ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
     global_rkey = NULL;
   }
 
-  // ucs_status_t status = ucp_ep_rkey_unpack(ep, rkey_buf, &global_rkey);
-  // if (status != UCS_OK) {
-  //   fprintf(stderr, "Failed to unpack rkey (%s)\n", ucs_status_string(status));
-  //   return status;
-  // }
-
   fprintf(stderr, "Client: Received remote_addr = 0x%lx and unpacked rkey\n",
           global_remote_addr);
-  rkey_received = 1;
   return UCS_OK;
 }
 

@@ -82,6 +82,7 @@ void send_rkey_to_client(ucp_ep_h ep) {
   memcpy(x, &info->remote_addr, sizeof(uint64_t));
   printf("Sending rkey and remote_addr to client\n");
   void *req = ucp_am_send_nbx(ep, AM_ID, NULL, 0, x, sizeof(uint64_t), &param);
+  ucp_am_send_nbx(ep, AM_ID, NULL, 0, rkey_buffer, rkey_size, &param);
   printf("Send operation called\n");
   if (UCS_PTR_IS_PTR(req)) {
     // while (ucp_request_check_status(req) == UCS_INPROGRESS) {
