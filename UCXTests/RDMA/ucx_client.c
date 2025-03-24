@@ -34,6 +34,7 @@ void send_cb(void *request, ucs_status_t status, void *user_data) {
   printf("Client: AM message %d sent successfully (status = %s)\n", id,
          ucs_status_string(status));
   if (request != NULL) {
+    printf("Freeing AM request(in send_cb) %p\n", request);
     ucp_request_free(request);
   }
 }
@@ -42,9 +43,10 @@ void rdma_cb(void *request, ucs_status_t status, void *user_data) {
   int id = (int)(uintptr_t)user_data;
   printf("Client: RDMA write %d completed (status = %s)\n", id,
          ucs_status_string(status));
-  if (request != NULL) {
-    ucp_request_free(request);
-  }
+  // if (request != NULL) {
+  //   printf("Freeing request (in RDMA_cb) %p\n", request);
+  //   ucp_request_free(request);
+  // }
 }
 
 typedef struct {
@@ -78,13 +80,15 @@ ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
   // global_remote_addr = info->remote_addr;
   printf("Message size is %ld\n", length);
   // printf("Remote addr is %ld\n", info->remote_addr);
-  if (length == sizeof(uint64_t)) {
+  if (length == sizeof(uint64_t)) { // then we know it's the remote_addr
+    // print the length
+    printf("Length for remote addr(and sizeof(uint64)) is %ld\n", length);
     printf("x is %ld\n", *((uint64_t *)data));
     global_remote_addr = *((uint64_t *)data);
-  } else {
+  } else if (length > sizeof(uint64_t)){ // then we know it's the rkey
+    printf("Length for rkey is %ld\n", length);
     rkey_size = length;
     rkey_buf = data;
-    fprintf(stderr, "Invalid RDMA info message\n");
 
     ucs_status_t status = ucp_ep_rkey_unpack(ep, rkey_buf, &global_rkey);
     if (status != UCS_OK) {
@@ -96,6 +100,9 @@ ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
     rkey_received = 1;
 
     return UCS_OK;
+  } else {
+    fprintf(stderr, "Invalid RDMA info message\n");
+    return UCS_ERR_INVALID_PARAM;
   }
   // printf("Message: %s\n", (char *)data);
 
@@ -176,9 +183,11 @@ int main(int argc, char **argv) {
                                     .user_data = (void *)(uintptr_t)i};
     void *am_req =
         ucp_am_send_nbx(ep, AM_ID, NULL, 0, msg, strlen(msg) + 1, &am_param);
+    printf("AM request is %p\n", am_req);
     if (UCS_PTR_IS_PTR(am_req)) {
       while (ucp_request_check_status(am_req) == UCS_INPROGRESS)
         ucp_worker_progress(worker);
+      printf("Freeing AM request %p\n", am_req);
       ucp_request_free(am_req);
     } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)am_req)) {
       send_cb(NULL, (ucs_status_t)(uintptr_t)am_req, am_param.user_data);
@@ -200,9 +209,11 @@ int main(int argc, char **argv) {
 
     void *put_req = ucp_put_nbx(ep, rdma_data, RDMA_MSG_SIZE,
                                 global_remote_addr, global_rkey, &put_param);
+    printf("Put request is %p\n", put_req);
     if (UCS_PTR_IS_PTR(put_req)) {
       while (ucp_request_check_status(put_req) == UCS_INPROGRESS)
         ucp_worker_progress(worker);
+      printf("Freeing PUT request %p\n", put_req);
       ucp_request_free(put_req);
     } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)put_req)) {
       rdma_cb(NULL, (ucs_status_t)(uintptr_t)put_req, put_param.user_data);
