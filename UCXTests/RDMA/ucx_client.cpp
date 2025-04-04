@@ -11,9 +11,17 @@
 #define AM_ID 1
 #define PORT 13337
 #define RDMA_MSG "This is RDMA data from client!"
-#define RDMA_MSG_SIZE 128
 #define BUFFER_SIZE 128
 #define CHUNK_SIZE 16
+
+typedef struct {
+  uint64_t remote_addr;
+  // rkey will follow this header
+} __attribute__((packed)) rdma_info_t;
+
+static ucp_rkey_h global_rkey = NULL;
+static uint64_t global_remote_addr = 0;
+static int rkey_received = 0;
 
 static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
   ucp_worker_params_t worker_params;
@@ -52,15 +60,6 @@ void rdma_cb(void *request, ucs_status_t status, void *user_data) {
   //   ucp_request_free(request);
   // }
 }
-
-typedef struct {
-  uint64_t remote_addr;
-  // rkey will follow this header
-} __attribute__((packed)) rdma_info_t;
-
-static ucp_rkey_h global_rkey = NULL;
-static uint64_t global_remote_addr = 0;
-static int rkey_received = 0;
 
 ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
                           void *data, size_t length,
@@ -257,22 +256,49 @@ int main(int argc, char **argv) {
   int *rdma_data = generate_random_data(BUFFER_SIZE);
   // rdma_data[BUFFER_SIZE - 1] = '\0'; // Null-terminate the string
 
+  // send the chunk size value to the server using AM
+  // create a string message with the chunk size and buffer size to send. There should be a seperator between the two to parse it on the server side
+  char *msg = (char *)malloc(64);
+  snprintf(msg, 64, "%d %d", CHUNK_SIZE, BUFFER_SIZE);
+  printf("Sending chunk size %d and buffer size %d\n", CHUNK_SIZE,
+         BUFFER_SIZE);
+  ucp_request_param_t am_chunk_param = {
+      .op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_USER_DATA,
+      .user_data = (void *)(uintptr_t)0};
+  am_chunk_param.cb.send = send_cb;
+  void *am_req = ucp_am_send_nbx(ep, AM_ID, NULL, 0, msg, strlen(msg) + 1,
+                                 &am_chunk_param);
+  printf("AM request is %p\n", am_req);
+  // make sure to block until the AM is sent
+  if (UCS_PTR_IS_PTR(am_req)) {
+    while (ucp_request_check_status(am_req) == UCS_INPROGRESS)
+      ucp_worker_progress(worker);
+    printf("Freeing AM request %p\n", am_req);
+    ucp_request_free(am_req);
+  } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)am_req)) {
+    send_cb(NULL, (ucs_status_t)(uintptr_t)am_req, am_chunk_param.user_data);
+  } else {
+    fprintf(stderr, "Request failed: %s\n",
+            ucs_status_string((ucs_status_t)(uintptr_t)am_req));
+  }
+
+
   int chunks_count = BUFFER_SIZE / CHUNK_SIZE;
   for (int i = 0; i < chunks_count; i++) {
     // Send Active Message
-    const char *msg = "Hello, UCX!";
+    // const char *msg = "Hello, UCX!";
     // ucp_request_param_t am_param = {.op_attr_mask =
     // UCP_OP_ATTR_FIELD_CALLBACK |
     //                                                 UCP_OP_ATTR_FIELD_USER_DATA,
     //                                 .user_data = (void *)(uintptr_t)i};
     // am_param.cb.send = send_cb;
     // void *am_req =
-    //     ucp_am_send_nbx(ep, AM_ID, NULL, 0, msg, strlen(msg) + 1, &am_param);
-    // requests.push(am_req);
+    //     ucp_am_send_nbx(ep2, AM_ID, NULL, 0, msg, strlen(msg) + 1, &am_param);
+
     // printf("AM request is %p\n", am_req);
     // if (UCS_PTR_IS_PTR(am_req)) {
     //   while (ucp_request_check_status(am_req) == UCS_INPROGRESS)
-    //     ucp_worker_progress(worker);
+    //     ucp_worker_progress(worker2);
     //   printf("Freeing AM request %p\n", am_req);
     //   ucp_request_free(am_req);
     // } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)am_req)) {

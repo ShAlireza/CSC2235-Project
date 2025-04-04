@@ -9,9 +9,13 @@
 
 #define AM_ID 1
 #define PORT 13337
-#define RDMA_BUFFER_SIZE 128
-#define BUFFER_SIZE 128
-#define CHUNK_SIZE 16
+//#define BUFFER_SIZE 128
+//#define CHUNK_SIZE 16
+
+// Chunk size will actually be receied from the client as an initial message. so we need to replace CHUNK_SIZE with the value received from the client
+// The next line will be a global variable which will be modified by the client
+size_t CHUNK_SIZE = 0;
+size_t BUFFER_SIZE = 0;
 
 typedef struct {
   uint64_t remote_addr;
@@ -44,7 +48,19 @@ static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
 ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                         void *data, size_t length,
                         const ucp_am_recv_param_t *param) {
-  printf("Server received AM: %.*s\n", (int)length, (char *)data);
+  // data is a string message which contains the chunk size, followed by a space, followed by the buffer size
+  printf("Server received AM: %s\n", (char *)data);
+  // parse the data to get the chunk size and buffer size. Note that we must convert them to size_t
+  char *token = strtok((char *)data, " ");
+  if (token != NULL) {
+    CHUNK_SIZE = strtoul(token, NULL, 10);
+    token = strtok(NULL, " ");
+    if (token != NULL) {
+      BUFFER_SIZE = strtoul(token, NULL, 10);
+    }
+  }
+  printf("Server: Received chunk size %ld and buffer size %ld\n", CHUNK_SIZE,
+         BUFFER_SIZE);
   return UCS_OK;
 }
 
@@ -175,8 +191,8 @@ int main() {
         printf("%d ", ((int *)rdma_buffer)[i]);
       }
       printf("\n");
-      // printf("[RDMA] Server received data: %s\n", (char *)rdma_buffer);
-      // memset(rdma_buffer, 0, RDMA_BUFFER_SIZE);
+      printf("------------------------------------------------------------\n");
+
     }
     usleep(1000);
   }
