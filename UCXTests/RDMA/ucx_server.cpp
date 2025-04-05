@@ -9,6 +9,7 @@
 
 #define AM_ID 1
 #define PORT 13337
+static ucp_ep_h client_ep = NULL;
 //#define BUFFER_SIZE 128
 //#define CHUNK_SIZE 16
 
@@ -43,25 +44,6 @@ static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
     ret = -1;
   }
   return ret;
-}
-
-ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
-                        void *data, size_t length,
-                        const ucp_am_recv_param_t *param) {
-  // data is a string message which contains the chunk size, followed by a space, followed by the buffer size
-  printf("Server received AM: %s\n", (char *)data);
-  // parse the data to get the chunk size and buffer size. Note that we must convert them to size_t
-  char *token = strtok((char *)data, " ");
-  if (token != NULL) {
-    CHUNK_SIZE = strtoul(token, NULL, 10);
-    token = strtok(NULL, " ");
-    if (token != NULL) {
-      BUFFER_SIZE = strtoul(token, NULL, 10);
-    }
-  }
-  printf("Server: Received chunk size %ld and buffer size %ld\n", CHUNK_SIZE,
-         BUFFER_SIZE);
-  return UCS_OK;
 }
 
 void send_cb(void *request, ucs_status_t status, void *user_data) {
@@ -103,12 +85,17 @@ void send_rkey_to_client(ucp_ep_h ep) {
   ucp_am_send_nbx(ep, AM_ID, NULL, 0, rkey_buffer, rkey_size, &param);
   printf("Send operation called\n");
   if (UCS_PTR_IS_PTR(req)) {
-    // while (ucp_request_check_status(req) == UCS_INPROGRESS) {
-    // printf("Calling worker progress api\n");
-    // ucp_worker_progress(worker);
-    // }
-    // printf("Freeing the request\n");
-    // ucp_request_free(req);
+    while (ucp_request_check_status(req) == UCS_INPROGRESS) {
+      printf("Calling worker progress api\n");
+      ucp_worker_progress(worker);
+    } 
+    printf("Freeing AM request %p\n", req);
+    ucp_request_free(req);
+  } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)req)) {
+    send_cb(NULL, (ucs_status_t)(uintptr_t)req, param.user_data);
+  } else {
+    fprintf(stderr, "Request failed: %s\n",
+            ucs_status_string((ucs_status_t)(uintptr_t)req));
   }
   printf("Sent rkey and remote_addr to client\n");
 
@@ -117,14 +104,54 @@ void send_rkey_to_client(ucp_ep_h ep) {
   printf("Server: Sent rkey and remote_addr to client\n");
 }
 
+ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
+                        void *data, size_t length,
+                        const ucp_am_recv_param_t *param) {
+  
+  // data is a string message which contains the chunk size, followed by a space, followed by the buffer size
+  printf("Server received AM: %s\n", (char *)data);
+  // parse the data to get the chunk size and buffer size. Note that we must convert them to size_t
+  char *token = strtok((char *)data, " ");
+  if (token != NULL) {
+    CHUNK_SIZE = strtoul(token, NULL, 10);
+    token = strtok(NULL, " ");
+    if (token != NULL) {
+      BUFFER_SIZE = strtoul(token, NULL, 10);
+    }
+  }
+  printf("Server: Received chunk size %ld and buffer size %ld\n", CHUNK_SIZE,
+         BUFFER_SIZE);
+
+  // Allocate and register real RDMA buffer
+  rdma_buffer = calloc(1, BUFFER_SIZE);
+  // print the size and address of the buffer
+  printf("Server RDMA buffer allocated at %p\n", rdma_buffer);
+  printf("Server RDMA buffer size is %ld\n", BUFFER_SIZE);
+  ucp_mem_map_params_t mmap_params = {
+      .field_mask = UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
+                    UCP_MEM_MAP_PARAM_FIELD_LENGTH,
+      .address = rdma_buffer,
+      .length  = BUFFER_SIZE
+  };
+  ucs_status_t status = ucp_mem_map(context, &mmap_params, &memh);
+  if (status != UCS_OK) {
+    fprintf(stderr, "ucp_mem_map failed: %s\n", ucs_status_string(status));
+    return status;
+  }
+
+  // Now send the rkey back to the client
+  send_rkey_to_client(client_ep);
+
+  
+  return UCS_OK;
+}
+
 void on_connection(ucp_conn_request_h conn_request, void *arg) {
   ucp_worker_h worker = (ucp_worker_h)arg;
   ucp_ep_params_t ep_params = {.field_mask = UCP_EP_PARAM_FIELD_CONN_REQUEST,
                                .conn_request = conn_request};
-  ucp_ep_h ep;
-  ucp_ep_create(worker, &ep_params, &ep);
+  ucp_ep_create(worker, &ep_params, &client_ep);
   printf("Server: client connected\n");
-  send_rkey_to_client(ep);
 }
 
 int main() {
@@ -148,22 +175,9 @@ int main() {
   }
   printf("Worker initialized\n");
 
-  // Allocate and register buffer for RDMA
-  rdma_buffer = calloc(1, BUFFER_SIZE);
-  ucp_mem_map_params_t mmap_params = {.field_mask =
-                                          UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
-                                          UCP_MEM_MAP_PARAM_FIELD_LENGTH,
-                                      .address = rdma_buffer,
-                                      .length = BUFFER_SIZE};
-  // Register memory for hardware to be used in RDMA
-  status = ucp_mem_map(context, &mmap_params, &memh);
-  if (status != UCS_OK) {
-    fprintf(stderr, "ucp_mem_map failed: %s\n", ucs_status_string(status));
-    return -1;
-  }
-  printf("Server RDMA buffer registered at %p\n", rdma_buffer);
-
   // Set AM callback
+  // ASSUMPTION: First message received by the server will be the chunk size and buffer size
+  // The server then immediately sends the rkey to the client
   ucp_am_handler_param_t am_param = {.field_mask =
                                          UCP_AM_HANDLER_PARAM_FIELD_ID |
                                          UCP_AM_HANDLER_PARAM_FIELD_CB,
@@ -181,18 +195,29 @@ int main() {
       .conn_handler = {.cb = on_connection, .arg = worker}};
   ucp_listener_create(worker, &listener_params, &listener);
   printf("Server is listening on port %d\n", PORT);
-
   while (1) {
     ucp_worker_progress(worker);
     // print strlen of rdma_buffer
     // printf("strlen(rdma_buffer) = %ld\n", strlen((char*)rdma_buffer));
-    if (((int *)rdma_buffer)[0] != 0) {
+    //if (rdma_buffer != NULL && ((int *)rdma_buffer)[0] != 0) {
+    if (rdma_buffer != NULL) {
       for (int i = 0; i < BUFFER_SIZE / sizeof(int); i++) {
         printf("%d ", ((int *)rdma_buffer)[i]);
       }
       printf("\n");
       printf("------------------------------------------------------------\n");
+      // print the size of the buffer
+      // printf("Receive Buffer size is %ld\n", strlen((char *)rdma_buffer));
+      // if the buffer was filled up, then set do_once to 1
 
+    }
+    // check if rdma buffer is not null and is the same size as the buffer size. if it is, then we can break
+    // print BUFFER_SIZE
+    // check if the last number in the buffer is not 0, then break
+    if (rdma_buffer != NULL && 
+        ((int *)rdma_buffer)[BUFFER_SIZE / sizeof(int) - 1] != 0) {
+      printf("Buffer is full\n");
+      break;
     }
     usleep(1000);
   }
