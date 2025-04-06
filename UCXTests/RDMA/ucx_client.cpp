@@ -19,9 +19,21 @@ typedef struct {
   // rkey will follow this header
 } __attribute__((packed)) rdma_info_t;
 
-static ucp_rkey_h global_rkey = NULL;
-static uint64_t global_remote_addr = 0;
-static int rkey_received = 0;
+typedef struct {
+  ucp_context_h context;
+  ucp_worker_h worker;
+  ucp_ep_h ep;
+  ucp_rkey_h rkey;
+  uint64_t remote_addr;
+  int rkey_received;
+  std::queue<void *> requests;
+  bool finished;
+  int *rdma_data;
+} ucx_client_t;
+
+//static ucp_rkey_h global_rkey = NULL;
+//static uint64_t global_remote_addr = 0;
+//static int rkey_received = 0;
 
 static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
   ucp_worker_params_t worker_params;
@@ -45,31 +57,18 @@ void send_cb(void *request, ucs_status_t status, void *user_data) {
   int id = (int)(uintptr_t)user_data;
   printf("Client: AM message %d sent successfully (status = %s)\n", id,
          ucs_status_string(status));
-  if (request != NULL) {
-    printf("Freeing AM request(in send_cb) %p\n", request);
-    ucp_request_free(request);
-  }
 }
 
 void rdma_cb(void *request, ucs_status_t status, void *user_data) {
   int id = (int)(uintptr_t)user_data;
   printf("Client: RDMA write %d completed (status = %s)\n", id,
          ucs_status_string(status));
-  // if (request != NULL) {
-  //   printf("Freeing request (in RDMA_cb) %p\n", request);
-  //   ucp_request_free(request);
-  // }
 }
 
 ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
                           void *data, size_t length,
                           const ucp_am_recv_param_t *param) {
-  ucp_ep_h ep = (ucp_ep_h)arg;
-
-  // if (length < sizeof(rdma_info_t)) {
-  //   fprintf(stderr, "Invalid RDMA info message\n");
-  //   return UCS_OK;
-  // }
+  ucx_client_t *client = (ucx_client_t *)arg;
 
   printf("Header size is %ld\n", header_length);
   if (data == NULL) {
@@ -78,49 +77,38 @@ ucs_status_t rkey_recv_cb(void *arg, const void *header, size_t header_length,
   }
   size_t rkey_size;
   void *rkey_buf;
-  // int *x = (int *)data;
-  // const rdma_info_t *info = (const rdma_info_t *)data;
-  // global_remote_addr = info->remote_addr;
   printf("Message size is %ld\n", length);
-  // printf("Remote addr is %ld\n", info->remote_addr);
   if (length == sizeof(uint64_t)) { // then we know it's the remote_addr
-    // print the length
     printf("Length for remote addr(and sizeof(uint64)) is %ld\n", length);
     printf("x is %ld\n", *((uint64_t *)data));
-    global_remote_addr = *((uint64_t *)data);
+    client->remote_addr = *((uint64_t *)data);
   } else if (length > sizeof(uint64_t)) { // then we know it's the rkey
     printf("Length for rkey is %ld\n", length);
     rkey_size = length;
     rkey_buf = data;
 
-    ucs_status_t status = ucp_ep_rkey_unpack(ep, rkey_buf, &global_rkey);
+    ucs_status_t status = ucp_ep_rkey_unpack(client->ep, rkey_buf, &client->rkey);
     if (status != UCS_OK) {
       fprintf(stderr, "Failed to unpack rkey (%s)\n",
               ucs_status_string(status));
       return status;
     }
 
-    rkey_received = 1;
+    client->rkey_received = 1;
 
     return UCS_OK;
   } else {
     fprintf(stderr, "Invalid RDMA info message\n");
     return UCS_ERR_INVALID_PARAM;
   }
-  // printf("Message: %s\n", (char *)data);
 
-  // char *bytes = (char *)data;
-  // for (int i = 0; i < length; i++) {
-  //   printf("%d ", bytes[i]);
-  // }
-
-  if (global_rkey != NULL) {
-    ucp_rkey_destroy(global_rkey);
-    global_rkey = NULL;
+  if (client->rkey != NULL) {
+    ucp_rkey_destroy(client->rkey);
+    client->rkey = NULL;
   }
 
   fprintf(stderr, "Client: Received remote_addr = 0x%lx and unpacked rkey\n",
-          global_remote_addr);
+          client->remote_addr);
   return UCS_OK;
 }
 
@@ -132,7 +120,6 @@ int *generate_random_data(int size) {
     return NULL;
   }
   for (int i = 0; i < size / sizeof(int); i++) {
-    // buffer[i] = (rand() % 26) + 65;
     buffer[i] = i;
   }
 
@@ -215,32 +202,22 @@ void send_BF_sizes(ucp_ep_h ep, ucp_worker_h worker) {
   }
 }
 
-int main(int argc, char **argv) {
+int start_ucx_client(const char *server_ip) {
 
   bool finished = false;
-
-  if (argc < 2) {
-    printf("Usage: %s <server_ip>\n", argv[0]);
-    return 1;
-  }
-
-  std::queue<void *> requests;
   int threshold = 100;
 
-  const char *server_ip = argv[1];
-  ucp_context_h context;
-  ucp_worker_h worker;
-  ucp_ep_h ep;
+  ucx_client_t *client = new ucx_client_t();
 
   // Init context
   ucp_params_t params = {.field_mask = UCP_PARAM_FIELD_FEATURES,
                          .features = UCP_FEATURE_AM | UCP_FEATURE_RMA};
-  ucp_init(&params, NULL, &context);
+  ucp_init(&params, NULL, &client->context);
 
   // Init worker
-  if (init_worker(context, &worker) != 0) {
+  if (init_worker(client->context, &client->worker) != 0) {
     fprintf(stderr, "failed to init_worker\n");
-    ucp_cleanup(context);
+    ucp_cleanup(client->context);
     return -1;
   }
   ucp_request_param_t put_param = {.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK |
@@ -249,7 +226,7 @@ int main(int argc, char **argv) {
   put_param.cb.send = rdma_cb;
 
   // Start a thread to check sending queue
-  std::thread sender_thread(sender, &requests, threshold, worker, put_param,
+  std::thread sender_thread(sender, &client->requests, threshold, client->worker, put_param,
                             &finished);
 
   // Create endpoint
@@ -264,7 +241,7 @@ int main(int argc, char **argv) {
                    .addrlen = sizeof(server_addr)}};
   ep_params.err_handler.cb = NULL;
   ep_params.err_handler.arg = NULL;
-  ucp_ep_create(worker, &ep_params, &ep);
+  ucp_ep_create(client->worker, &ep_params, &client->ep);
 
   // Register AM handler to receive rkey from server
   ucp_am_handler_param_t am_param = {.field_mask =
@@ -273,15 +250,15 @@ int main(int argc, char **argv) {
                                          UCP_AM_HANDLER_PARAM_FIELD_ARG,
                                      .id = AM_ID,
                                      .cb = rkey_recv_cb,
-                                     .arg = ep};
-  ucp_worker_set_am_recv_handler(worker, &am_param);
+                                     .arg = client};
+  ucp_worker_set_am_recv_handler(client->worker, &am_param);
 
   // Send the Chunk Size and Buffer Size Metadata to the server
-  send_BF_sizes(ep, worker);
+  send_BF_sizes(client->ep, client->worker);
 
   // Wait until rkey is received
-  while (!rkey_received) {
-    ucp_worker_progress(worker);
+  while (!client->rkey_received) {
+    ucp_worker_progress(client->worker);
   }
 
   int *rdma_data = generate_random_data(BUFFER_SIZE);
@@ -298,13 +275,15 @@ int main(int argc, char **argv) {
     printf("\n");
 
     put_param.user_data = (void *)(uintptr_t)i;
+    printf("Sending chunk %d\n", i);
 
     void *put_req =
-        ucp_put_nbx(ep, rdma_data + i * CHUNK_SIZE / sizeof(int), CHUNK_SIZE,
-                    global_remote_addr + i * CHUNK_SIZE,
-                    global_rkey, &put_param);
-    requests.push(put_req);
-    printf("Requests size is %ld\n", requests.size());
+        ucp_put_nbx(client->ep, rdma_data + i * CHUNK_SIZE / sizeof(int), CHUNK_SIZE,
+                    client->remote_addr + i * CHUNK_SIZE,
+                    client->rkey, &put_param);
+    printf("Put request is %p\n", put_req);
+    client->requests.push(put_req);
+    printf("Requests size is %ld\n", client->requests.size());
   }
 
   printf("All data sent\n");
@@ -315,11 +294,22 @@ int main(int argc, char **argv) {
   printf("Waiting for sender thread to finish\n");
   free(rdma_data);
 
-  if (global_rkey != NULL) {
-    ucp_rkey_destroy(global_rkey);
+  if (client->rkey != NULL) {
+    ucp_rkey_destroy(client->rkey);
   }
-  ucp_ep_destroy(ep);
-  ucp_worker_destroy(worker);
-  ucp_cleanup(context);
+  ucp_ep_destroy(client->ep);
+  ucp_worker_destroy(client->worker);
+  ucp_cleanup(client->context);
+  delete client;
+  return 0;
+}
+
+int main(int argc, char **argv) {
+  if (argc < 2) {
+    printf("Usage: %s <server_ip>\n", argv[0]);
+    return 1;
+  }
+  const char *server_ip = argv[1];
+  start_ucx_client(server_ip);
   return 0;
 }
