@@ -3,7 +3,7 @@
 #include <iostream>
 #include <thread>
 
-#define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 256
+#define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 128
 #define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
@@ -19,8 +19,8 @@ int main(int argc, char *argv[]) {
                                DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating GPU merger 2" << std::endl;
-  // DistinctMergeGPU merger_gpu2(1, DEDUPLICATION_TUPLES_COUNT,
-  //                              DEDUPLICATION_CHUNK_SIZE);
+  DistinctMergeGPU merger_gpu2(1, DEDUPLICATION_TUPLES_COUNT,
+                               DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating CPU merger" << std::endl;
   // DistinctMerge merger(
