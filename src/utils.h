@@ -1,6 +1,4 @@
-#include <chrono>
 #include <cooperative_groups.h>
-#include <cooperative_groups/reduce.h>
 #include <cstdio>
 #include <cstring>
 #include <cuda_runtime.h>
@@ -37,7 +35,7 @@
 
 void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count, int offset = 0) {
   // Generate random data on CPU
-  int *host_buffer = (int *)malloc(tuples_count);
+  int *host_buffer = (int *)malloc(tuples_count * sizeof(int));
   cudaEvent_t *timing_events;
   for (int j = 0; j < tuples_count; j++) {
     host_buffer[j] = offset + j;
