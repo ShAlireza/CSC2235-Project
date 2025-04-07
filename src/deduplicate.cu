@@ -27,8 +27,8 @@ int main(int argc, char *argv[]) {
       {merger_gpu1.destination_buffer, merger_gpu2.destination_buffer},
       {DEDUPLICATION_TUPLES_COUNT, DEDUPLICATION_TUPLES_COUNT});
 
-  merger_gpu1.cpu_merger = &merger;
-  merger_gpu2.cpu_merger = &merger;
+  // merger_gpu1.cpu_merger = &merger;
+  // merger_gpu2.cpu_merger = &merger;
 
   std::cout << "Starting GPU 1 merger" << std::endl;
   // std::thread t1(start_deduplication, std::ref(merger_gpu1));
