@@ -21,17 +21,30 @@
     }                                                                          \
   }
 
-
 // Generate random data on CPU and send it to GPU with id gpu_id
-void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
-    size_t data_size, cudaStream_t stream) {
-    // Generate random data on CPU
-    cudaEvent_t *timing_events;
-    for (int j = 0; j < data_size / sizeof(int); j++) {
-    host_buffer[j] = 1;
-    }
-    // Transfer data to GPU
-    CHECK_CUDA(cudaSetDevice(gpu_id));
-    CHECK_CUDA(cudaMemcpyAsync(gpu_buffer, host_buffer, data_size,
-                cudaMemcpyHostToDevice));
+// void generate_data(int gpu_id, int *host_buffer, int *gpu_buffer,
+//                    size_t data_size) {
+//   // Generate random data on CPU
+//   cudaEvent_t *timing_events;
+//   for (int j = 0; j < data_size / sizeof(int); j++) {
+//     host_buffer[j] = 1;
+//   }
+//   // Transfer data to GPU
+//   CHECK_CUDA(cudaSetDevice(gpu_id));
+//   CHECK_CUDA(
+//       cudaMemcpy(gpu_buffer, host_buffer, data_size, cudaMemcpyHostToDevice));
+// }
+
+void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count, int offset = 0) {
+  // Generate random data on CPU
+  int *host_buffer = (int *)malloc(tuples_count);
+  cudaEvent_t *timing_events;
+  for (int j = 0; j < tuples_count; j++) {
+    host_buffer[j] = offset + j;
+  }
+  // Transfer data to GPU
+  CHECK_CUDA(cudaSetDevice(gpu_id));
+  CHECK_CUDA(cudaMemcpy(gpu_buffer, host_buffer, tuples_count,
+                        cudaMemcpyHostToDevice));
+  free(host_buffer);
 }
