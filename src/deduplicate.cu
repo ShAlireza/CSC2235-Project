@@ -1,4 +1,4 @@
-// #include "distinct_merge.h"
+#include "distinct_merge.h"
 
 #include <iostream>
 #include <thread>
@@ -6,9 +6,9 @@
 #define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 256
 #define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
 
-// void start_deduplication(DistinctMergeGPU &merger_gpu) {
-//   merger_gpu.start();
-// }
+void start_deduplication(DistinctMergeGPU &merger_gpu) {
+  merger_gpu.start();
+}
 
 int main(int argc, char *argv[]) {
 
