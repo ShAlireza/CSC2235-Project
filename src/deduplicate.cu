@@ -12,7 +12,7 @@ void start_deduplication(DistinctMergeGPU &merger_gpu) {
 
 int main(int argc, char *argv[]) {
 
-  std::cout << "Starting deduplication" << std::endl;
+  std::cout << "Starting deduplication" << std::endl << std::flush;
 
   std::cout << "Creating GPU merger 1" << std::endl;
   DistinctMergeGPU merger_gpu1(0, DEDUPLICATION_TUPLES_COUNT,
