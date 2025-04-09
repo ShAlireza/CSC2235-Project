@@ -8,8 +8,8 @@
 
 DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
                              const std::vector<int> &receive_buffer_sizes)
-: receive_buffers(receive_buffers),
-  receive_buffer_sizes(receive_buffer_sizes) {
+    : receive_buffers(receive_buffers),
+      receive_buffer_sizes(receive_buffer_sizes) {
 
   this->send_buffer = (int *)malloc(DISTINCT_MERGE_BUFFER_SIZE * sizeof(int));
 
@@ -51,6 +51,10 @@ void DistinctMerge::sender() {
 
   std::cout << "In sender thread" << std::endl;
   while (true) {
+    std::cout << "Buffer start index: " << this->send_buffer_start_index
+              << std::endl;
+    std::cout << "Buffer end index: " << this->send_buffer_end_index
+              << std::endl;
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
     std::cout << "Difference: " << difference << std::endl;
