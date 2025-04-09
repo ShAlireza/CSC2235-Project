@@ -49,6 +49,7 @@ void DistinctMerge::sender() {
   // TODO: this function check the send buffer and sends data whenever it
   // reached the threshold
 
+  std::cout << "In sender thread" << std::endl;
   while (true) {
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
