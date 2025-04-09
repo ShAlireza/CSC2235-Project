@@ -24,6 +24,9 @@ int main(int argc, char *argv[]) {
 
   std::cout << "Creating CPU merger" << std::endl;
 
+  std::cout << (merger_gpu1.destination_buffer == nullptr) << std::endl;
+  std::cout << (merger_gpu1.destination_buffer == nullptr) << std::endl;
+
   std::vector<int *> recv_buffers = {merger_gpu1.destination_buffer,
                                      merger_gpu2.destination_buffer};
   std::vector<int> recv_buffer_sizes = {DEDUPLICATION_TUPLES_COUNT,
