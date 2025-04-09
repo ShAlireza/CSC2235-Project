@@ -7,16 +7,10 @@
 #include <mutex>
 #include <thread>
 
-DistinctMerge::DistinctMerge(const std::vector<int *> receive_buffers,
-                             const std::vector<int> receive_buffer_sizes)
-// : receive_buffers(receive_buffers),
-// receive_buffer_sizes(receive_buffer_sizes) {
-{
-  for (int i = 0; i < receive_buffers.size(); i++) {
-    std::cout << "Buffer " << i << "\n";
-    // this->receive_buffers.push_back(receive_buffers[i]);
-    // this->receive_buffer_sizes.push_back(receive_buffer_sizes[i]);
-  }
+DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
+                             const std::vector<int> &receive_buffer_sizes)
+    : receive_buffers(receive_buffers),
+      receive_buffer_sizes(receive_buffer_sizes) {
 
   // print the receive buffers
   // std::cout << "Receive buffers: " << std::endl;
