@@ -29,48 +29,48 @@ DistinctMerge::DistinctMerge(std::vector<int *> &receive_buffers,
   // std::thread sender_thread(&DistinctMerge::sender, this);
 }
 
-int DistinctMerge::check_value(int value) {
-  // WARN: We should remove locking later since its a performance bottleneck (we
-  // should use somthing like Intel TBB)
-
-  std::unique_lock<std::mutex> lock(this->seen_values_mutex);
-
-  auto it = seen_values.find(value);
-  if (it != seen_values.end()) {
-    // INFO: We assume that input data are positive integers
-    lock.unlock();
-    return -1;
-  } else {
-    seen_values[value] = true;
-    lock.unlock();
-    return value;
-  }
-}
-
-bool DistinctMerge::stage(int value) {
-
-  std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
-
-  this->send_buffer[this->send_buffer_end_index++] = value;
-
-  lock.unlock();
-
-  return true;
-}
-
-void DistinctMerge::sender() {
-  // TODO: this function check the send buffer and sends data whenever it
-  // reached the threshold
-
-  while (true) {
-    int difference =
-        std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
-    if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-      std::cout << "Sending data" << std::endl;
-      this->send_buffer_start_index += difference;
-    }
-  }
-}
+// int DistinctMerge::check_value(int value) {
+//   // WARN: We should remove locking later since its a performance bottleneck (we
+//   // should use somthing like Intel TBB)
+//
+//   std::unique_lock<std::mutex> lock(this->seen_values_mutex);
+//
+//   auto it = seen_values.find(value);
+//   if (it != seen_values.end()) {
+//     // INFO: We assume that input data are positive integers
+//     lock.unlock();
+//     return -1;
+//   } else {
+//     seen_values[value] = true;
+//     lock.unlock();
+//     return value;
+//   }
+// }
+//
+// bool DistinctMerge::stage(int value) {
+//
+//   std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+//
+//   this->send_buffer[this->send_buffer_end_index++] = value;
+//
+//   lock.unlock();
+//
+//   return true;
+// }
+//
+// void DistinctMerge::sender() {
+//   // TODO: this function check the send buffer and sends data whenever it
+//   // reached the threshold
+//
+//   while (true) {
+//     int difference =
+//         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
+//     if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+//       std::cout << "Sending data" << std::endl;
+//       this->send_buffer_start_index += difference;
+//     }
+//   }
+// }
 
 DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size)
     : gpu_id(gpu_id), tuples_count(tuples_count), chunk_size(chunk_size) {
