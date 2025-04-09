@@ -9,8 +9,13 @@
 
 DistinctMerge::DistinctMerge(const std::vector<int *> receive_buffers,
                              const std::vector<int> receive_buffer_sizes)
-    : receive_buffers(receive_buffers),
-      receive_buffer_sizes(receive_buffer_sizes) {
+// : receive_buffers(receive_buffers),
+// receive_buffer_sizes(receive_buffer_sizes) {
+{
+  for (int i = 0; i < receive_buffers.size(); i++) {
+    this->receive_buffers.push_back(receive_buffers[i]);
+    this->receive_buffer_sizes.push_back(receive_buffer_sizes[i]);
+  }
 
   // print the receive buffers
   // std::cout << "Receive buffers: " << std::endl;
@@ -22,7 +27,7 @@ DistinctMerge::DistinctMerge(const std::vector<int *> receive_buffers,
   //   std::cout << std::endl;
   // }
 
-  //std::thread sender_thread(&DistinctMerge::sender, this);
+  // std::thread sender_thread(&DistinctMerge::sender, this);
 }
 
 int DistinctMerge::check_value(int value) {
