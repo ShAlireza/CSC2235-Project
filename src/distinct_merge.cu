@@ -29,7 +29,7 @@ int DistinctMerge::check_value(int value) {
     lock.unlock();
     return -1;
   } else {
-    seen_values[value] = true;
+    seen_values.emplace(value, true);
     lock.unlock();
     return value;
   }
