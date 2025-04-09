@@ -96,8 +96,10 @@ void DistinctMergeGPU::exec(int start_index) {
       this->cpu_merger->stage(checked_value);
     }
   }
-  std::cout << "GPU: " << this->gpu_id << " - Number of inserts: " << number_of_inserts
-            << " for chunk starting at index: " << start_index << std::endl;
+  std::cout << "GPU: " << this->gpu_id
+            << " - Number of inserts: " << number_of_inserts
+            << " for chunk starting at index: " << start_index
+            << "chunk size: " << this->chunk_size << std::endl;
 }
 
 void DistinctMergeGPU::start() {
