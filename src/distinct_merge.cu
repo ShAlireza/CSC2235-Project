@@ -14,6 +14,7 @@ DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
   this->send_buffer = (int *)malloc(DISTINCT_MERGE_BUFFER_SIZE * sizeof(int));
 
   std::thread sender_thread(&DistinctMerge::sender, this);
+  sender_thread.detach();
 }
 
 int DistinctMerge::check_value(int value) {
