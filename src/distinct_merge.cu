@@ -90,6 +90,8 @@ void DistinctMergeGPU::exec(int start_index) {
 }
 
 void DistinctMergeGPU::start() {
+  std::cout << std::unitbuf;
+  std::cout << "Starting GPU merger" << std::endl;
 
   int threads_count = this->tuples_count / this->chunk_size;
 
