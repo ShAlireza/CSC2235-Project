@@ -2,7 +2,6 @@
 #include "utils.h"
 #include <cstdlib>
 #include <iostream>
-#include <iterator>
 #include <math.h>
 #include <mutex>
 #include <thread>
