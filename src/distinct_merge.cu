@@ -13,14 +13,14 @@ DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
       receive_buffer_sizes(receive_buffer_sizes) {
 
   // print the receive buffers
-  std::cout << "Receive buffers: " << std::endl;
-  for (int i = 0; i < receive_buffers.size(); i++) {
-    std::cout << "Buffer " << i << ": ";
-    for (int j = 0; j < receive_buffer_sizes[i]; j++) {
-      std::cout << receive_buffers[i][j] << " ";
-    }
-    std::cout << std::endl;
-  }
+  // std::cout << "Receive buffers: " << std::endl;
+  // for (int i = 0; i < receive_buffers.size(); i++) {
+  //   std::cout << "Buffer " << i << ": ";
+  //   for (int j = 0; j < receive_buffer_sizes[i]; j++) {
+  //     std::cout << receive_buffers[i][j] << " ";
+  //   }
+  //   std::cout << std::endl;
+  // }
 
   //std::thread sender_thread(&DistinctMerge::sender, this);
 }
