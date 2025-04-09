@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   std::vector<int> recv_buffer_sizes = {DEDUPLICATION_TUPLES_COUNT,
                                         DEDUPLICATION_TUPLES_COUNT};
 
-  DistinctMerge merger(recv_buffers, recv_buffer_sizes);
+  // DistinctMerge merger(recv_buffers, recv_buffer_sizes);
 
   // merger_gpu1.cpu_merger = &merger;
   // merger_gpu2.cpu_merger = &merger;
