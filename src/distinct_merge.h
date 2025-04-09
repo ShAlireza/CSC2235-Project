@@ -12,7 +12,7 @@
 struct DistinctMerge {
 private:
   std::map<int, bool> seen_values{};
-  int send_buffer[DISTINCT_MERGE_BUFFER_SIZE]{-1};
+  int *send_buffer;
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
 
