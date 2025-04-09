@@ -44,12 +44,9 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
   for (int j = 0; j < tuples_count; j++) {
     host_buffer[j] = offset + j;
   }
-  for (int j = 0; j < tuples_count; j++) {
-    std::cout << "host_buffer[" << j << "] = " << host_buffer[j] << std::endl;
-  }
-  // Transfer data to GPU
+    // Transfer data to GPU
   CHECK_CUDA(cudaSetDevice(gpu_id));
-  CHECK_CUDA(cudaMemcpy(gpu_buffer, host_buffer, tuples_count,
+  CHECK_CUDA(cudaMemcpy(gpu_buffer, host_buffer, tuples_count * sizeof(int),
                         cudaMemcpyHostToDevice));
   free(host_buffer);
 }
