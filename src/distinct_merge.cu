@@ -52,14 +52,10 @@ void DistinctMerge::sender() {
 
   std::cout << "In sender thread" << std::endl;
   while (true) {
-    std::cout << "Buffer start index: " << this->send_buffer_start_index
-              << std::endl;
-    std::cout << "Buffer end index: " << this->send_buffer_end_index
-              << std::endl;
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
-    std::cout << "Difference: " << difference << std::endl;
     if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+      std::cout << "Difference: " << difference << std::endl;
       std::cout << "Sending data" << std::endl;
       this->send_buffer_start_index += difference;
     }
