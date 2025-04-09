@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
             << recv_buffer_sizes.size() << std::endl;
 
   // DistinctMerge merger();
-  // DistinctMerge merger(recv_buffers, recv_buffer_sizes);
+  DistinctMerge merger(recv_buffers, recv_buffer_sizes);
 
   // merger_gpu1.cpu_merger = &merger;
   // merger_gpu2.cpu_merger = &merger;

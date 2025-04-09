@@ -6,8 +6,8 @@
 #include <mutex>
 #include <thread>
 
-DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
-                             const std::vector<int> &receive_buffer_sizes)
+DistinctMerge::DistinctMerge(std::vector<int *> &receive_buffers,
+                             std::vector<int> &receive_buffer_sizes)
     : receive_buffers(receive_buffers),
       receive_buffer_sizes(receive_buffer_sizes) {
 
