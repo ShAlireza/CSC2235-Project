@@ -75,6 +75,7 @@ DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size)
 }
 
 void DistinctMergeGPU::exec(int start_index) {
+  cudaSetDevice(this->gpu_id);
   // TODO: Run the deduplication on the chunk (do it later, for now we just
   // assume that all tuples have unique values)
 
@@ -84,14 +85,19 @@ void DistinctMergeGPU::exec(int start_index) {
       this->chunk_size * sizeof(int), cudaMemcpyDeviceToHost));
 
   // TODO: Check the values and stage them for sending
+  int number_of_inserts = 0;
   for (int i = start_index; i < start_index + this->chunk_size; i++) {
     int checked_value =
         this->cpu_merger->check_value(this->destination_buffer[i]);
 
     // Tuple is new so we should stage it into the send buffer
-    if (checked_value != -1)
+    if (checked_value != -1) {
+      number_of_inserts++;
       this->cpu_merger->stage(checked_value);
+    }
   }
+  std::cout << "GPU: " << this->gpu_id << " - Number of inserts: " << number_of_inserts
+            << " for chunk starting at index: " << start_index << std::endl;
 }
 
 void DistinctMergeGPU::start() {
