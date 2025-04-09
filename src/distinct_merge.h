@@ -24,8 +24,8 @@ private:
 
 public:
   DistinctMerge() = default;
-  DistinctMerge(std::vector<int *> &receive_buffers,
-                std::vector<int> &receive_buffer_sizes);
+  DistinctMerge(const std::vector<int *> &receive_buffers,
+                const std::vector<int> &receive_buffer_sizes);
 
   int check_value(int value);
 

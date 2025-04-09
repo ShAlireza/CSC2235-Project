@@ -6,29 +6,14 @@
 #include <mutex>
 #include <thread>
 
-DistinctMerge::DistinctMerge(std::vector<int *> &receive_buffers,
-                             std::vector<int> &receive_buffer_sizes)
-// : receive_buffers(receive_buffers),
-//   receive_buffer_sizes(receive_buffer_sizes) {
-{
+DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
+                             const std::vector<int> &receive_buffer_sizes)
+: receive_buffers(receive_buffers),
+  receive_buffer_sizes(receive_buffer_sizes) {
+
   this->send_buffer = (int *)malloc(DISTINCT_MERGE_BUFFER_SIZE * sizeof(int));
 
-  for (int i = 0; i < receive_buffers.size(); i++) {
-    this->receive_buffers.push_back(receive_buffers[i]);
-    this->receive_buffer_sizes.push_back(receive_buffer_sizes[i]);
-  }
-
-  // print the receive buffers
-  // std::cout << "Receive buffers: " << std::endl;
-  // for (int i = 0; i < receive_buffers.size(); i++) {
-  //   std::cout << "Buffer " << i << ": ";
-  //   for (int j = 0; j < receive_buffer_sizes[i]; j++) {
-  //     std::cout << receive_buffers[i][j] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
-
-  // std::thread sender_thread(&DistinctMerge::sender, this);
+  std::thread sender_thread(&DistinctMerge::sender, this);
 }
 
 int DistinctMerge::check_value(int value) {
