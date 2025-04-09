@@ -3,8 +3,8 @@
 #include <iostream>
 #include <thread>
 
-#define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 2
-#define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
+#define DEDUPLICATION_TUPLES_COUNT 16
+#define DEDUPLICATION_CHUNK_SIZE 8
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
