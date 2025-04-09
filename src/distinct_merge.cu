@@ -94,12 +94,12 @@ void DistinctMergeGPU::exec(int start_index) {
 
   // TODO: Check the values and stage them for sending
   for (int i = start_index; i < start_index + this->chunk_size; i++) {
-    int checked_value =
-        this->cpu_merger->check_value(this->destination_buffer[i]);
+    // int checked_value =
+        // this->cpu_merger->check_value(this->destination_buffer[i]);
 
     // Tuple is new so we should stage it into the send buffer
-    if (checked_value != -1)
-      this->cpu_merger->stage(checked_value);
+    // if (checked_value != -1)
+      // this->cpu_merger->stage(checked_value);
   }
 }
 
