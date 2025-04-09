@@ -92,6 +92,7 @@ void DistinctMergeGPU::exec(int start_index) {
 
     // Tuple is new so we should stage it into the send buffer
     if (checked_value != -1) {
+      std::cout << "Inserting value: " << checked_value << "=====" << std::endl;
       number_of_inserts++;
       this->cpu_merger->stage(checked_value);
     }
