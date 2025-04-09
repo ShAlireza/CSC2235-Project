@@ -21,7 +21,6 @@ int DistinctMerge::check_value(int value) {
   // WARN: We should remove locking later since its a performance bottleneck (we
   // should use somthing like Intel TBB)
 
-  std::cout << "Checking value: " << 200 + value << "------" << std::endl;
   std::unique_lock<std::mutex> lock(this->seen_values_mutex);
 
   auto it = seen_values.find(value);
@@ -93,7 +92,6 @@ void DistinctMergeGPU::exec(int start_index) {
 
     // Tuple is new so we should stage it into the send buffer
     if (checked_value != -1) {
-      std::cout << "Inserting value: " << 100 + checked_value << "=====" << std::endl;
       number_of_inserts++;
       this->cpu_merger->stage(checked_value);
     }

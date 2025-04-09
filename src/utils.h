@@ -40,7 +40,6 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
   // Generate random data on CPU
   int *host_buffer = (int *)malloc(tuples_count * sizeof(int));
   cudaEvent_t *timing_events;
-  std::cout << "Tuples count: " << tuples_count << std::endl;
   for (int j = 0; j < tuples_count; j++) {
     host_buffer[j] = offset + j;
   }
