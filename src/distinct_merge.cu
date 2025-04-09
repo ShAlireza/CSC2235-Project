@@ -55,7 +55,7 @@ void DistinctMerge::sender() {
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
     if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-      std::cout << "Difference: " << difference << std::endl;
+      // std::cout << "Difference: " << difference << std::endl;
       std::cout << "Sending data" << std::endl;
       this->send_buffer_start_index += difference;
     }
