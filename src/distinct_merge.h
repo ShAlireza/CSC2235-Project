@@ -27,11 +27,11 @@ public:
   DistinctMerge(std::vector<int *> &receive_buffers,
                 std::vector<int> &receive_buffer_sizes);
 
-  // int check_value(int value);
-  //
-  // bool stage(int value);
-  //
-  // void sender();
+  int check_value(int value);
+
+  bool stage(int value);
+
+  void sender();
 };
 
 struct DistinctMergeGPU {
