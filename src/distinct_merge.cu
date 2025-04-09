@@ -21,6 +21,7 @@ int DistinctMerge::check_value(int value) {
   // WARN: We should remove locking later since its a performance bottleneck (we
   // should use somthing like Intel TBB)
 
+  std::cout << "Checking value: " << 200 + value << "------" << std::endl;
   std::unique_lock<std::mutex> lock(this->seen_values_mutex);
 
   auto it = seen_values.find(value);
