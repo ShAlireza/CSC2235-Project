@@ -2,11 +2,11 @@
 #include <cstdio>
 #include <cstring>
 #include <cuda_runtime.h>
+#include <iostream>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
-#include <iostream>
 
 #define ITEMS_COUNT 1024 * 1024 * 256 * 4 / 2
 
@@ -31,16 +31,21 @@
 //   // Transfer data to GPU
 //   CHECK_CUDA(cudaSetDevice(gpu_id));
 //   CHECK_CUDA(
-//       cudaMemcpy(gpu_buffer, host_buffer, data_size, cudaMemcpyHostToDevice));
+//       cudaMemcpy(gpu_buffer, host_buffer, data_size,
+//       cudaMemcpyHostToDevice));
 // }
 
-void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count, int offset = 0) {
+void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
+                   int offset = 0) {
   // Generate random data on CPU
   int *host_buffer = (int *)malloc(tuples_count * sizeof(int));
   cudaEvent_t *timing_events;
   std::cout << "Tuples count: " << tuples_count << std::endl;
   for (int j = 0; j < tuples_count; j++) {
     host_buffer[j] = offset + j;
+  }
+  for (int j = 0; j < tuples_count; j++) {
+    std::cout << "host_buffer[" << j << "] = " << host_buffer[j] << std::endl;
   }
   // Transfer data to GPU
   CHECK_CUDA(cudaSetDevice(gpu_id));
