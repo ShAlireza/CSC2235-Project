@@ -59,11 +59,28 @@ void DistinctMerge::sender() {
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
     if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-      // std::cout << "Difference: " << difference << std::endl;
-      // TODO: Send the data to the RDMA client using the send_chunk function
-      std::cout << "Sending data" << std::endl;
-      
-      this->send_buffer_start_index += difference;
+      std::cout << "[Sender] Threshold reached: " << difference << " values ready\n";
+
+      while (difference >= DISTINCT_MERGE_SEND_CHUNK_SIZE){
+        std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+        int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
+        int chunk_bytes = DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int);
+
+        if (this->rdma_client != nullptr) {
+            std::cout << "[Sender] Sending chunk of size " << chunk_bytes 
+            << " bytes at RDMA offset " << buffer_offset << std::endl;
+
+            rdma_client->send_chunk(chunk_ptr, chunk_bytes, buffer_offset);
+        }
+        else {
+            std::cout << "[Sender] RDMA client is not set, skipping send" << std::endl;
+        }
+        this->send_buffer_start_index += DISTINCT_MERGE_SEND_CHUNK_SIZE;
+        this->buffer_offset += chunk_bytes;
+
+        difference = std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
+        
+      }
     }
   }
 }

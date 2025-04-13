@@ -6,7 +6,6 @@
 
 #define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 2
 #define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
-#define DEDUPLICATION_SEND_CHUNK_SIZE 1024 * 256 // MUST MATCH THRESHOLD SIZE
 #define DESTINATION_HOST_IP "localhost" // For now
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
@@ -42,7 +41,7 @@ int main(int argc, char *argv[]) {
 
   UcxRdmaClient *rdma_client = new UcxRdmaClient(DESTINATION_HOST_IP, 
                                                   DEDUPLICATION_TUPLES_COUNT * sizeof(int), 
-                                                DEDUPLICATION_SEND_CHUNK_SIZE * sizeof(int));
+                                                DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int));
   merger.set_rdma_client(rdma_client);
   merger_gpu1.cpu_merger = &merger;
   merger_gpu2.cpu_merger = &merger;

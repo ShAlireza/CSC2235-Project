@@ -9,14 +9,17 @@
 #define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size
 #define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 256
+#define DISTINCT_MERGE_SEND_CHUNK_SIZE 1024 * 1024
 
 struct DistinctMerge {
 private:
   std::map<int, bool> seen_values{};
   int *send_buffer;
-  UcxRdmaClient *rdma_client = nullptr;
+  UcxRdmaClient *rdma_client{nullptr};
+  int buffer_offset{0};
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
+
 
   std::mutex send_buffer_mutex{};
   std::mutex seen_values_mutex{};
