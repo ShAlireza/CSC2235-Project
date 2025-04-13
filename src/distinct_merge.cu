@@ -67,16 +67,14 @@ void DistinctMerge::sender() {
         int chunk_bytes = DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int);
 
         if (this->rdma_client != nullptr) {
-            std::cout << "[Sender] Sending chunk of size " << chunk_bytes 
-            << " bytes at RDMA offset " << buffer_offset << std::endl;
+            std::cout << "[Sender] Sending chunk of size " << chunk_bytes << std::endl;
 
-            rdma_client->send_chunk(chunk_ptr, chunk_bytes, buffer_offset);
+            this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
         }
         else {
             std::cout << "[Sender] RDMA client is not set, skipping send" << std::endl;
         }
         this->send_buffer_start_index += DISTINCT_MERGE_SEND_CHUNK_SIZE;
-        this->buffer_offset += chunk_bytes;
 
         difference = std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
         

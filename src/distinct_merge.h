@@ -16,7 +16,6 @@ private:
   std::map<int, bool> seen_values{};
   int *send_buffer;
   UcxRdmaClient *rdma_client{nullptr};
-  int buffer_offset{0};
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
 
