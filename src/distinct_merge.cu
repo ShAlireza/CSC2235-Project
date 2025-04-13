@@ -5,16 +5,20 @@
 #include <math.h>
 #include <mutex>
 #include <thread>
+#include "../UCXTests/RDMA/ucx_rdma_client.h"
 
 DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
                              const std::vector<int> &receive_buffer_sizes)
     : receive_buffers(receive_buffers),
-      receive_buffer_sizes(receive_buffer_sizes) {
+      receive_buffer_sizes(receive_buffer_sizes){
 
   this->send_buffer = (int *)malloc(DISTINCT_MERGE_BUFFER_SIZE * sizeof(int));
-
   std::thread sender_thread(&DistinctMerge::sender, this);
   sender_thread.detach();
+}
+
+void set_rdma_client(UcxRdmaClient *client) {
+  this->rdma_client = client;
 }
 
 int DistinctMerge::check_value(int value) {
@@ -56,7 +60,9 @@ void DistinctMerge::sender() {
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
     if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
       // std::cout << "Difference: " << difference << std::endl;
+      // TODO: Send the data to the RDMA client using the send_chunk function
       std::cout << "Sending data" << std::endl;
+      
       this->send_buffer_start_index += difference;
     }
   }

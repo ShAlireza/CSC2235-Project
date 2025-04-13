@@ -221,6 +221,7 @@ int start_ucx_server(uint16_t port){
     }
     if (server->rdma_buffer != NULL && 
         ((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] != 0) {
+      usleep(1000);
       printf("Buffer is full\n");
       break;
     }

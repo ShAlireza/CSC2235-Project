@@ -4,6 +4,7 @@
 #include <map>
 #include <mutex>
 #include <vector>
+#include "../UCXTests/RDMA/ucx_rdma_client.h"
 
 #define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size
@@ -13,6 +14,7 @@ struct DistinctMerge {
 private:
   std::map<int, bool> seen_values{};
   int *send_buffer;
+  UcxRdmaClient *rdma_client = nullptr;
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
 
@@ -32,6 +34,8 @@ public:
   bool stage(int value);
 
   void sender();
+
+  void set_rdma_client(UcxRdmaClient *rdma_client);
 };
 
 struct DistinctMergeGPU {

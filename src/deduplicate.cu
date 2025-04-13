@@ -1,10 +1,13 @@
 #include "distinct_merge.h"
+#include "../UCXTests/RDMA/ucx_rdma_client.h"
 
 #include <iostream>
 #include <thread>
 
 #define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 2
 #define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
+#define DEDUPLICATION_SEND_CHUNK_SIZE 1024 * 256 // MUST MATCH THRESHOLD SIZE
+#define DESTINATION_HOST_IP "localhost" // For now
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
@@ -18,9 +21,11 @@ int main(int argc, char *argv[]) {
   DistinctMergeGPU merger_gpu1(0, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
 
+
   std::cout << "Creating GPU merger 2" << std::endl;
   DistinctMergeGPU merger_gpu2(1, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
+  
 
   std::cout << "Creating CPU merger" << std::endl;
 
@@ -31,10 +36,14 @@ int main(int argc, char *argv[]) {
                                      merger_gpu2.destination_buffer};
   std::vector<int> recv_buffer_sizes = {DEDUPLICATION_TUPLES_COUNT,
                                         DEDUPLICATION_TUPLES_COUNT};
+  
 
   DistinctMerge merger(recv_buffers, recv_buffer_sizes);
 
-
+  UcxRdmaClient *rdma_client = new UcxRdmaClient(DESTINATION_HOST_IP, 
+                                                  DEDUPLICATION_TUPLES_COUNT * sizeof(int), 
+                                                DEDUPLICATION_SEND_CHUNK_SIZE * sizeof(int));
+  merger.set_rdma_client(rdma_client);
   merger_gpu1.cpu_merger = &merger;
   merger_gpu2.cpu_merger = &merger;
 
@@ -44,6 +53,9 @@ int main(int argc, char *argv[]) {
   std::thread t2(start_deduplication, std::ref(merger_gpu2));
 
   while(true);
+
+  rdma_client->finish();
+  delete rdma_client;
 
   return 0;
 }
