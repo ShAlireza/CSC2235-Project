@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
+#include <map>
 
 #define AM_ID 1
 #define PORT 13337
@@ -13,6 +14,7 @@
 
 static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
 static int client_count = 0;
+
 //#define BUFFER_SIZE 128
 //#define CHUNK_SIZE 16
 
@@ -33,6 +35,8 @@ typedef struct {
     size_t buffer_size;
     size_t chunk_size;
     int clients_ready;
+    std::map<int, bool> seen_values{};
+    void *send_buffer;
 } ucx_server_t;
 
 static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
@@ -143,6 +147,9 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
   if (server->clients_ready == MAX_CLIENTS) { // NEW
     size_t total_size = 2 * server->buffer_size;
     server->rdma_buffer = calloc(1, total_size);
+    server->send_buffer = calloc(1, total_size); // NEW
+    // Note that we still allocate total size, which might be too much, 
+    // but we dont know how many duplicates there will be, so its fine
 
     ucp_mem_map_params_t mmap_params = {
         .field_mask = UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
@@ -257,7 +264,22 @@ int start_ucx_server(uint16_t port){
         (((int *)server->rdma_buffer)[(2 * server->buffer_size / sizeof(int)) - 1] != 0)) {
         sleep(2);
         printf("Both buffers appear full (last entries non-zero)\n");
-        break;
+        // Now that they are full, we should iterate over the buffer and use the seen values map to check if we've seen the value before.
+        // If the value is unique, we can put it into the send_buffer.
+        // Otherwise, we can ignore it.
+        int *input = (int *)server->rdma_buffer;
+        int *send_buffer = (int *)server->send_buffer;
+        int total_entries = 2 * (server->buffer_size / sizeof(int));
+        for (size_t i = 0; i < total_entries; i++) {
+            int value = input[i];
+            if (server->seen_values.find(value) == server->seen_values.end()) { // if not found
+                server->seen_values[value] = true;
+                // Add the value to the send buffer
+                send_buffer[i] = value;
+                printf("Unique value: %d\n", value);
+            }
+        }
+
     }
 
     usleep(1000);
