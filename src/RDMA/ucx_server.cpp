@@ -10,11 +10,12 @@
 #define AM_ID 1
 #define PORT 13337
 static ucp_ep_h client_ep = NULL;
-//#define BUFFER_SIZE 128
-//#define CHUNK_SIZE 16
+// #define BUFFER_SIZE 128
+// #define CHUNK_SIZE 16
 
-// Chunk size will actually be receied from the client as an initial message. so we need to replace CHUNK_SIZE with the value received from the client
-// The next line will be a global variable which will be modified by the client
+// Chunk size will actually be receied from the client as an initial message. so
+// we need to replace CHUNK_SIZE with the value received from the client The
+// next line will be a global variable which will be modified by the client
 
 typedef struct {
   uint64_t remote_addr;
@@ -22,14 +23,14 @@ typedef struct {
 } __attribute__((packed)) rdma_info_t;
 
 typedef struct {
-    ucp_context_h context;
-    ucp_worker_h worker;
-    ucp_listener_h listener;
-    ucp_ep_h client_ep;
-    void *rdma_buffer;
-    ucp_mem_h memh;
-    size_t buffer_size;
-    size_t chunk_size;
+  ucp_context_h context;
+  ucp_worker_h worker;
+  ucp_listener_h listener;
+  ucp_ep_h client_ep;
+  void *rdma_buffer;
+  ucp_mem_h memh;
+  size_t buffer_size;
+  size_t chunk_size;
 } ucx_server_t;
 
 static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
@@ -66,8 +67,8 @@ void handle_request(void *req, const char *label, ucp_worker_h worker) {
   } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)req)) {
     send_cb(NULL, (ucs_status_t)(uintptr_t)req, NULL);
   } else {
-    fprintf(stderr, "%s request failed: %s\n",
-            label, ucs_status_string((ucs_status_t)(uintptr_t)req));
+    fprintf(stderr, "%s request failed: %s\n", label,
+            ucs_status_string((ucs_status_t)(uintptr_t)req));
   }
 }
 
@@ -76,7 +77,8 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server) {
   size_t rkey_size = 0;
 
   printf("Pack the rkey for client\n");
-  ucs_status_t status = ucp_rkey_pack(server->context, server->memh, &rkey_buffer, &rkey_size);
+  ucs_status_t status =
+      ucp_rkey_pack(server->context, server->memh, &rkey_buffer, &rkey_size);
   if (status != UCS_OK) {
     fprintf(stderr, "ucp_rkey_pack failed: %s\n", ucs_status_string(status));
     return;
@@ -98,7 +100,8 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server) {
   memcpy(x, &info->remote_addr, sizeof(uint64_t));
   printf("Sending rkey and remote_addr to client\n");
   void *req1 = ucp_am_send_nbx(ep, AM_ID, NULL, 0, x, sizeof(uint64_t), &param);
-  void *req2 = ucp_am_send_nbx(ep, AM_ID, NULL, 0, rkey_buffer, rkey_size, &param);
+  void *req2 =
+      ucp_am_send_nbx(ep, AM_ID, NULL, 0, rkey_buffer, rkey_size, &param);
   handle_request(req1, "remote_addr", server->worker);
   handle_request(req2, "rkey", server->worker);
 
@@ -110,14 +113,14 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server) {
 ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                         void *data, size_t length,
                         const ucp_am_recv_param_t *param) {
-  
+
   ucx_server_t *server = (ucx_server_t *)arg;
   if (!server) {
     fprintf(stderr, "Error: server is NULL!\n");
     return UCS_ERR_INVALID_PARAM;
   }
   printf("Server received AM: %s\n", (char *)data);
-  
+
   char *token = strtok((char *)data, " ");
   if (token != NULL) {
     server->chunk_size = strtoul(token, NULL, 10);
@@ -126,21 +129,21 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
       server->buffer_size = strtoul(token, NULL, 10);
     }
   }
-  printf("Server: Received chunk size %ld and buffer size %ld\n", server->chunk_size,
-         server->buffer_size);
+  printf("Server: Received chunk size %ld and buffer size %ld\n",
+         server->chunk_size, server->buffer_size);
 
   // Allocate and register real RDMA buffer
   server->rdma_buffer = calloc(1, server->buffer_size);
   // print the size and address of the buffer
   printf("Server RDMA buffer allocated at %p\n", server->rdma_buffer);
   printf("Server RDMA buffer size is %ld\n", server->buffer_size);
-  ucp_mem_map_params_t mmap_params = {
-      .field_mask = UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
-                    UCP_MEM_MAP_PARAM_FIELD_LENGTH,
-      .address = server->rdma_buffer,
-      .length  = server->buffer_size
-  };
-  ucs_status_t status = ucp_mem_map(server->context, &mmap_params, &server->memh);
+  ucp_mem_map_params_t mmap_params = {.field_mask =
+                                          UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
+                                          UCP_MEM_MAP_PARAM_FIELD_LENGTH,
+                                      .address = server->rdma_buffer,
+                                      .length = server->buffer_size};
+  ucs_status_t status =
+      ucp_mem_map(server->context, &mmap_params, &server->memh);
   if (status != UCS_OK) {
     fprintf(stderr, "ucp_mem_map failed: %s\n", ucs_status_string(status));
     return status;
@@ -149,7 +152,6 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
   // Now send the rkey back to the client
   send_rkey_to_client(client_ep, server);
 
-  
   return UCS_OK;
 }
 
@@ -161,12 +163,12 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
   printf("Server: client connected\n");
 }
 
-int start_ucx_server(uint16_t port){
+int start_ucx_server(uint16_t port) {
 
   ucx_server_t *server = (ucx_server_t *)calloc(1, sizeof(ucx_server_t));
   if (!server) {
-      fprintf(stderr, "Failed to allocate ucx_server_t\n");
-      return -1;
+    fprintf(stderr, "Failed to allocate ucx_server_t\n");
+    return -1;
   }
   ucs_status_t status;
 
@@ -188,8 +190,8 @@ int start_ucx_server(uint16_t port){
   printf("Worker initialized\n");
 
   // Set AM callback
-  // ASSUMPTION: First message received by the server will be the chunk size and buffer size
-  // The server then immediately sends the rkey to the client
+  // ASSUMPTION: First message received by the server will be the chunk size and
+  // buffer size The server then immediately sends the rkey to the client
   ucp_am_handler_param_t am_param = {.field_mask =
                                          UCP_AM_HANDLER_PARAM_FIELD_ID |
                                          UCP_AM_HANDLER_PARAM_FIELD_CB |
@@ -211,16 +213,22 @@ int start_ucx_server(uint16_t port){
   printf("Server is listening on port %d\n", PORT);
   while (1) {
     ucp_worker_progress(server->worker);
-    if (server->rdma_buffer != NULL) {
-      for (int i = 0; i < server->buffer_size / sizeof(int); i++) {
+    // if (server->rdma_buffer != NULL) {
+      // for (int i = 0; i < server->buffer_size / sizeof(int); i++) {
+      //   printf("%d ", ((int *)server->rdma_buffer)[i]);
+      // }
+      // printf("\n");
+      // printf("------------------------------------------------------------\n");
+    // }
+    if (server->rdma_buffer != NULL &&
+        ((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] !=
+            0) {
+      for (int i = 0; i < 40 / sizeof(int); i++) {
         printf("%d ", ((int *)server->rdma_buffer)[i]);
       }
       printf("\n");
       printf("------------------------------------------------------------\n");
 
-    }
-    if (server->rdma_buffer != NULL && 
-        ((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] != 0) {
       sleep(2);
       printf("Buffer is full\n");
       break;
