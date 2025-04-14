@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <map>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +7,6 @@
 #include <sys/types.h>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
-#include <map>
 
 #define AM_ID 1
 #define PORT 13337
@@ -15,11 +15,12 @@
 static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
 static int client_count = 0;
 
-//#define BUFFER_SIZE 128
-//#define CHUNK_SIZE 16
+// #define BUFFER_SIZE 128
+// #define CHUNK_SIZE 16
 
-// Chunk size will actually be receied from the client as an initial message. so we need to replace CHUNK_SIZE with the value received from the client
-// The next line will be a global variable which will be modified by the client
+// Chunk size will actually be receied from the client as an initial message. so
+// we need to replace CHUNK_SIZE with the value received from the client The
+// next line will be a global variable which will be modified by the client
 
 typedef struct {
   uint64_t remote_addr;
@@ -27,16 +28,16 @@ typedef struct {
 } __attribute__((packed)) rdma_info_t;
 
 typedef struct {
-    ucp_context_h context;
-    ucp_worker_h worker;
-    ucp_listener_h listener;
-    void *rdma_buffer;
-    ucp_mem_h memh;
-    size_t buffer_size;
-    size_t chunk_size;
-    int clients_ready;
-    std::map<int, bool> seen_values{};
-    void *send_buffer;
+  ucp_context_h context;
+  ucp_worker_h worker;
+  ucp_listener_h listener;
+  void *rdma_buffer;
+  ucp_mem_h memh;
+  size_t buffer_size;
+  size_t chunk_size;
+  int clients_ready;
+  std::map<int, bool> seen_values{};
+  void *send_buffer;
 } ucx_server_t;
 
 static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
@@ -73,17 +74,19 @@ void handle_request(void *req, const char *label, ucp_worker_h worker) {
   } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)req)) {
     send_cb(NULL, (ucs_status_t)(uintptr_t)req, NULL);
   } else {
-    fprintf(stderr, "%s request failed: %s\n",
-            label, ucs_status_string((ucs_status_t)(uintptr_t)req));
+    fprintf(stderr, "%s request failed: %s\n", label,
+            ucs_status_string((ucs_status_t)(uintptr_t)req));
   }
 }
 
-void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server, size_t offset) { // ADDED OFFSET
+void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server,
+                         size_t offset) { // ADDED OFFSET
   void *rkey_buffer = NULL;
   size_t rkey_size = 0;
 
   printf("Pack the rkey for client\n");
-  ucs_status_t status = ucp_rkey_pack(server->context, server->memh, &rkey_buffer, &rkey_size);
+  ucs_status_t status =
+      ucp_rkey_pack(server->context, server->memh, &rkey_buffer, &rkey_size);
   if (status != UCS_OK) {
     fprintf(stderr, "ucp_rkey_pack failed: %s\n", ucs_status_string(status));
     return;
@@ -107,7 +110,8 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server, size_t offset) { // 
   memcpy(x, &info->remote_addr, sizeof(uint64_t));
   printf("Sending rkey and remote_addr to client\n");
   void *req1 = ucp_am_send_nbx(ep, AM_ID, NULL, 0, x, sizeof(uint64_t), &param);
-  void *req2 = ucp_am_send_nbx(ep, AM_ID, NULL, 0, rkey_buffer, rkey_size, &param);
+  void *req2 =
+      ucp_am_send_nbx(ep, AM_ID, NULL, 0, rkey_buffer, rkey_size, &param);
   handle_request(req1, "remote_addr", server->worker);
   handle_request(req2, "rkey", server->worker);
 
@@ -116,18 +120,17 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server, size_t offset) { // 
   printf("Server: Sent rkey and remote_addr to client\n");
 }
 
-
 ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                         void *data, size_t length,
                         const ucp_am_recv_param_t *param) {
-  
+
   ucx_server_t *server = (ucx_server_t *)arg;
   if (!server) {
     fprintf(stderr, "Error: server is NULL!\n");
     return UCS_ERR_INVALID_PARAM;
   }
   printf("Server received AM: %s\n", (char *)data);
-  
+
   char *token = strtok((char *)data, " ");
   if (token != NULL) {
     server->chunk_size = strtoul(token, NULL, 10);
@@ -139,8 +142,8 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
 
   server->clients_ready++; // NEW
 
-  printf("Server: Received chunk size %ld and buffer size %ld\n", server->chunk_size,
-         server->buffer_size);
+  printf("Server: Received chunk size %ld and buffer size %ld\n",
+         server->chunk_size, server->buffer_size);
 
   // Only allocate the buffer if both clients are ready NEW
 
@@ -148,17 +151,17 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     size_t total_size = 2 * server->buffer_size;
     server->rdma_buffer = calloc(1, total_size);
     server->send_buffer = calloc(1, total_size); // NEW
-    // Note that we still allocate total size, which might be too much, 
+    // Note that we still allocate total size, which might be too much,
     // but we dont know how many duplicates there will be, so its fine
 
-    ucp_mem_map_params_t mmap_params = {
-        .field_mask = UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
-                      UCP_MEM_MAP_PARAM_FIELD_LENGTH,
-        .address = server->rdma_buffer,
-        .length  = total_size
-    };
+    ucp_mem_map_params_t mmap_params = {.field_mask =
+                                            UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
+                                            UCP_MEM_MAP_PARAM_FIELD_LENGTH,
+                                        .address = server->rdma_buffer,
+                                        .length = total_size};
 
-    ucs_status_t status = ucp_mem_map(server->context, &mmap_params, &server->memh);
+    ucs_status_t status =
+        ucp_mem_map(server->context, &mmap_params, &server->memh);
 
     if (status != UCS_OK) {
       fprintf(stderr, "ucp_mem_map failed: %s\n", ucs_status_string(status));
@@ -188,12 +191,12 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
   printf("Server: client connected\n");
 }
 
-int start_ucx_server(uint16_t port){
+int start_ucx_server(uint16_t port) {
 
   ucx_server_t *server = (ucx_server_t *)calloc(1, sizeof(ucx_server_t));
   if (!server) {
-      fprintf(stderr, "Failed to allocate ucx_server_t\n");
-      return -1;
+    fprintf(stderr, "Failed to allocate ucx_server_t\n");
+    return -1;
   }
   ucs_status_t status;
 
@@ -215,8 +218,8 @@ int start_ucx_server(uint16_t port){
   printf("Worker initialized\n");
 
   // Set AM callback
-  // ASSUMPTION: First message received by the server will be the chunk size and buffer size
-  // The server then immediately sends the rkey to the client
+  // ASSUMPTION: First message received by the server will be the chunk size and
+  // buffer size The server then immediately sends the rkey to the client
   ucp_am_handler_param_t am_param = {.field_mask =
                                          UCP_AM_HANDLER_PARAM_FIELD_ID |
                                          UCP_AM_HANDLER_PARAM_FIELD_CB |
@@ -240,47 +243,52 @@ int start_ucx_server(uint16_t port){
     ucp_worker_progress(server->worker);
 
     if (server->rdma_buffer != NULL) {
-        int *buffer = (int *)server->rdma_buffer;
-        size_t entries_per_buffer = server->buffer_size / sizeof(int);
+      int *buffer = (int *)server->rdma_buffer;
+      size_t entries_per_buffer = server->buffer_size / sizeof(int);
 
-        printf("=== Buffer 1 ===\n");
-        for (size_t i = 0; i < entries_per_buffer; i++) {
-            printf("%d ", buffer[i]);
-        }
-        printf("\n");
+      printf("=== Buffer 1 ===\n");
+      for (size_t i = 0; i < entries_per_buffer; i++) {
+        printf("%d ", buffer[i]);
+      }
+      printf("\n");
 
-        printf("=== Buffer 2 ===\n");
-        for (size_t i = 0; i < entries_per_buffer; i++) {
-            printf("%d ", buffer[entries_per_buffer + i]);
-        }
-        printf("\n");
+      printf("=== Buffer 2 ===\n");
+      for (size_t i = 0; i < entries_per_buffer; i++) {
+        printf("%d ", buffer[entries_per_buffer + i]);
+      }
+      printf("\n");
 
-        printf("------------------------------------------------------------\n");
+      printf("------------------------------------------------------------\n");
     }
 
     // Check if the last element in both halves is non-zero
     if (server->rdma_buffer != NULL &&
-        (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] != 0) &&
-        (((int *)server->rdma_buffer)[(2 * server->buffer_size / sizeof(int)) - 1] != 0)) {
-        sleep(2);
-        printf("Both buffers appear full (last entries non-zero)\n");
-        // Now that they are full, we should iterate over the buffer and use the seen values map to check if we've seen the value before.
-        // If the value is unique, we can put it into the send_buffer.
-        // Otherwise, we can ignore it.
-        int *input = (int *)server->rdma_buffer;
-        int *send_buffer = (int *)server->send_buffer;
-        int total_entries = 2 * (server->buffer_size / sizeof(int));
-        printf("Total entries: %d\n", total_entries);
-        for (size_t i = 0; i < total_entries; i++) {
-            int value = input[i];
-            if (server->seen_values.find(value) == server->seen_values.end()) { // if not found
-                server->seen_values[value] = true;
-                // Add the value to the send buffer
-                send_buffer[i] = value;
-                printf("Unique value: %d\n", value);
-            }
+        (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] !=
+         0) &&
+        (((int *)server->rdma_buffer)[(2 * server->buffer_size / sizeof(int)) -
+                                      1] != 0)) {
+      sleep(2);
+      printf("Both buffers appear full (last entries non-zero)\n");
+      // Now that they are full, we should iterate over the buffer and use the
+      // seen values map to check if we've seen the value before. If the value
+      // is unique, we can put it into the send_buffer. Otherwise, we can ignore
+      // it.
+      int *input = (int *)server->rdma_buffer;
+      int *send_buffer = (int *)server->send_buffer;
+      int total_entries = 2 * (server->buffer_size / sizeof(int));
+      printf("Total entries: %d\n", total_entries);
+      for (size_t i = 0; i < total_entries; i++) {
+        int value = input[i];
+        pritnf("Value: %d\n", value);
+        if (server->seen_values.find(value) ==
+            server->seen_values.end()) { // if not found
+          printf("Value not found in map\n");
+          server->seen_values[value] = true;
+          // Add the value to the send buffer
+          send_buffer[i] = value;
+          printf("Unique value: %d\n", value);
         }
-
+      }
     }
 
     usleep(1000);
