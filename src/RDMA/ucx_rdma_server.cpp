@@ -283,7 +283,7 @@ int start_ucx_server(uint16_t port) {
         if (server->seen_values.find(value) ==
             server->seen_values.end()) { // if not found
           printf("Value not found in map\n");
-          server->seen_values.insert({value, true}); // add to map
+          server->seen_values.emplace(value, true);
           printf("Adding value to map\n");
           // Add the value to the send buffer
           send_buffer[i] = value;
