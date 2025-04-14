@@ -193,7 +193,7 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
 
 int start_ucx_server(uint16_t port) {
 
-  ucx_server_t *server = (ucx_server_t *)calloc(1, sizeof(ucx_server_t));
+  ucx_server_t *server = new ucx_server_t();
   if (!server) {
     fprintf(stderr, "Failed to allocate ucx_server_t\n");
     return -1;
