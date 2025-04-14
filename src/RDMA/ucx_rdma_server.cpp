@@ -277,30 +277,30 @@ int start_ucx_server(uint16_t port) {
       int *send_buffer = (int *)server->send_buffer;
       int total_entries = 2 * (server->buffer_size / sizeof(int));
       printf("Total entries: %d\n", total_entries);
-      // for (size_t i = 0; i < total_entries; i++) {
-      //   int value = input[i];
-      //   printf("Value: %d\n", value);
-      //   if (server->seen_values.find(value) ==
-      //       server->seen_values.end()) { // if not found
-      //     printf("Value not found in map\n");
-      //     server->seen_values.emplace(value, true);
-      //     printf("Adding value to map\n");
-      //     // Add the value to the send buffer
-      //     send_buffer[i] = value;
-      //     printf("Unique value: %d\n", value);
-      //   }
-      // }
+      for (size_t i = 0; i < total_entries; i++) {
+        int value = input[i];
+        printf("Value: %d\n", value);
+        if (server->seen_values.find(value) ==
+            server->seen_values.end()) { // if not found
+          printf("Value not found in map\n");
+          // server->seen_values.emplace(value, true);
+          printf("Adding value to map\n");
+          // Add the value to the send buffer
+          send_buffer[i] = value;
+          printf("Unique value: %d\n", value);
+        }
+      }
     }
 
     usleep(1000);
   }
 
-  // ucp_mem_unmap(server->context, server->memh);
-  // free(server->rdma_buffer);
-  // ucp_listener_destroy(server->listener);
-  // ucp_worker_destroy(server->worker);
-  // ucp_cleanup(server->context);
-  // free(server);
+  ucp_mem_unmap(server->context, server->memh);
+  free(server->rdma_buffer);
+  ucp_listener_destroy(server->listener);
+  ucp_worker_destroy(server->worker);
+  ucp_cleanup(server->context);
+  free(server);
 
   return 0;
 }
