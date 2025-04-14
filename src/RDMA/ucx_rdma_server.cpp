@@ -9,7 +9,10 @@
 
 #define AM_ID 1
 #define PORT 13337
-static ucp_ep_h client_ep = NULL;
+#define MAX_CLIENTS 2
+
+static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
+static int client_count = 0;
 //#define BUFFER_SIZE 128
 //#define CHUNK_SIZE 16
 
@@ -25,11 +28,11 @@ typedef struct {
     ucp_context_h context;
     ucp_worker_h worker;
     ucp_listener_h listener;
-    ucp_ep_h client_ep;
     void *rdma_buffer;
     ucp_mem_h memh;
     size_t buffer_size;
     size_t chunk_size;
+    int clients_ready;
 } ucx_server_t;
 
 static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
@@ -71,7 +74,7 @@ void handle_request(void *req, const char *label, ucp_worker_h worker) {
   }
 }
 
-void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server) {
+void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server, size_t offset) { // ADDED OFFSET
   void *rkey_buffer = NULL;
   size_t rkey_size = 0;
 
@@ -81,10 +84,12 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server) {
     fprintf(stderr, "ucp_rkey_pack failed: %s\n", ucs_status_string(status));
     return;
   }
+
+  uint64_t addr_offset = (uint64_t)(server->rdma_buffer) + offset; // NEW
   size_t msg_size = sizeof(rdma_info_t); // + rkey_size;
   char *msg = (char *)malloc(msg_size);
   rdma_info_t *info = (rdma_info_t *)msg;
-  info->remote_addr = (uint64_t)(server->rdma_buffer);
+  info->remote_addr = addr_offset; // NEW
   // memcpy(msg + sizeof(rdma_info_t), rkey_buffer, rkey_size);
   printf("Message size is %ld, rkey size is %ld\n", msg_size, rkey_size);
   printf("Remote addr is %ld\n", info->remote_addr);
@@ -107,6 +112,7 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server) {
   printf("Server: Sent rkey and remote_addr to client\n");
 }
 
+
 ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                         void *data, size_t length,
                         const ucp_am_recv_param_t *param) {
@@ -126,30 +132,43 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
       server->buffer_size = strtoul(token, NULL, 10);
     }
   }
+
+  server->clients_ready++; // NEW
+
   printf("Server: Received chunk size %ld and buffer size %ld\n", server->chunk_size,
          server->buffer_size);
 
-  // Allocate and register real RDMA buffer
-  server->rdma_buffer = calloc(1, server->buffer_size);
-  // print the size and address of the buffer
-  printf("Server RDMA buffer allocated at %p\n", server->rdma_buffer);
-  printf("Server RDMA buffer size is %ld\n", server->buffer_size);
-  ucp_mem_map_params_t mmap_params = {
-      .field_mask = UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
-                    UCP_MEM_MAP_PARAM_FIELD_LENGTH,
-      .address = server->rdma_buffer,
-      .length  = server->buffer_size
-  };
-  ucs_status_t status = ucp_mem_map(server->context, &mmap_params, &server->memh);
-  if (status != UCS_OK) {
-    fprintf(stderr, "ucp_mem_map failed: %s\n", ucs_status_string(status));
-    return status;
+  // Only allocate the buffer if both clients are ready NEW
+
+  if (server->clients_ready == MAX_CLIENTS) { // NEW
+    size_t total_size = 2 * server->buffer_size;
+    server->rdma_buffer = calloc(1, total_size);
+
+    ucp_mem_map_params_t mmap_params = {
+        .field_mask = UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
+                      UCP_MEM_MAP_PARAM_FIELD_LENGTH,
+        .address = server->rdma_buffer,
+        .length  = total_size
+    };
+
+    ucs_status_t status = ucp_mem_map(server->context, &mmap_params, &server->memh);
+
+    if (status != UCS_OK) {
+      fprintf(stderr, "ucp_mem_map failed: %s\n", ucs_status_string(status));
+      return status;
+    }
+    printf("Server RDMA buffer allocated at %p\n", server->rdma_buffer);
+    printf("Server RDMA buffer size is %ld\n", total_size);
+    printf("Server: Both clients are ready, buffer allocated\n");
+
+    // Now send the rkey back to the clients
+    for (int i = 0; i < MAX_CLIENTS; i++) { // NEW
+      if (client_eps[i] != NULL) {
+        send_rkey_to_client(client_eps[i], server, i * server->buffer_size);
+      }
+    }
   }
 
-  // Now send the rkey back to the client
-  send_rkey_to_client(client_ep, server);
-
-  
   return UCS_OK;
 }
 
@@ -157,7 +176,8 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
   ucp_worker_h worker = (ucp_worker_h)arg;
   ucp_ep_params_t ep_params = {.field_mask = UCP_EP_PARAM_FIELD_CONN_REQUEST,
                                .conn_request = conn_request};
-  ucp_ep_create(worker, &ep_params, &client_ep);
+  ucp_ep_create(worker, &ep_params, &client_eps[client_count]);
+  client_count++;
   printf("Server: client connected\n");
 }
 
@@ -211,20 +231,35 @@ int start_ucx_server(uint16_t port){
   printf("Server is listening on port %d\n", PORT);
   while (1) {
     ucp_worker_progress(server->worker);
-    if (server->rdma_buffer != NULL) {
-      for (int i = 0; i < server->buffer_size / sizeof(int); i++) {
-        printf("%d ", ((int *)server->rdma_buffer)[i]);
-      }
-      printf("\n");
-      printf("------------------------------------------------------------\n");
 
+    if (server->rdma_buffer != NULL) {
+        int *buffer = (int *)server->rdma_buffer;
+        size_t entries_per_buffer = server->buffer_size / sizeof(int);
+
+        printf("=== Buffer 1 ===\n");
+        for (size_t i = 0; i < entries_per_buffer; i++) {
+            printf("%d ", buffer[i]);
+        }
+        printf("\n");
+
+        printf("=== Buffer 2 ===\n");
+        for (size_t i = 0; i < entries_per_buffer; i++) {
+            printf("%d ", buffer[entries_per_buffer + i]);
+        }
+        printf("\n");
+
+        printf("------------------------------------------------------------\n");
     }
-    if (server->rdma_buffer != NULL && 
-        ((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] != 0) {
-      sleep(2);
-      printf("Buffer is full\n");
-      break;
+
+    // Check if the last element in both halves is non-zero
+    if (server->rdma_buffer != NULL &&
+        (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] != 0) &&
+        (((int *)server->rdma_buffer)[(2 * server->buffer_size / sizeof(int)) - 1] != 0)) {
+        sleep(2);
+        printf("Both buffers appear full (last entries non-zero)\n");
+        break;
     }
+
     usleep(1000);
   }
 
