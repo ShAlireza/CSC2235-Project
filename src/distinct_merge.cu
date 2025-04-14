@@ -17,7 +17,7 @@ DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
   sender_thread.detach();
 }
 
-void set_rdma_client(UcxRdmaClient *client) {
+void DistinctMerge::set_rdma_client(UcxRdmaClient *client) {
   this->rdma_client = client;
 }
 
