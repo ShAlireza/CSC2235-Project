@@ -53,6 +53,9 @@ int main(int argc, char *argv[]) {
 
   while(true);
 
+  t1.join();
+  t2.join();
+
   rdma_client->finish();
   delete rdma_client;
 
