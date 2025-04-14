@@ -125,11 +125,11 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
     // print the chunk data
     std::cout << "Client: Sending chunk of size " << size << " at address " 
               << remote_addr << "\n";
-    for (size_t i = 0; i < size / sizeof(int); ++i) {
-        std::cout << data[i] << " ";
-    }
-    std::cout << "\n";
-
+    // for (size_t i = 0; i < size / sizeof(int); ++i) {
+    //     std::cout << data[i] << " ";
+    // }
+    // std::cout << "\n";
+    //
 
     std::lock_guard<std::mutex> lock(requests_mutex);
     requests.push(req);

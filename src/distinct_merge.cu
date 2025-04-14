@@ -59,7 +59,7 @@ void DistinctMerge::sender() {
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
     if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-      std::cout << "[Sender] Threshold reached: " << difference << " values ready\n";
+      // std::cout << "[Sender] Threshold reached: " << difference << " values ready\n";
 
       while (difference >= DISTINCT_MERGE_SEND_CHUNK_SIZE){
         std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
@@ -117,10 +117,10 @@ void DistinctMergeGPU::exec(int start_index) {
       this->cpu_merger->stage(checked_value);
     }
   }
-  std::cout << "GPU: " << this->gpu_id
-            << " - Number of inserts: " << number_of_inserts
-            << " for chunk starting at index: " << start_index
-            << "chunk size: " << this->chunk_size << std::endl;
+  // std::cout << "GPU: " << this->gpu_id
+  //           << " - Number of inserts: " << number_of_inserts
+  //           << " for chunk starting at index: " << start_index
+  //           << "chunk size: " << this->chunk_size << std::endl;
 }
 
 void DistinctMergeGPU::start() {
