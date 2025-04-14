@@ -26,7 +26,10 @@ private:
   std::vector<int *> receive_buffers{};
   std::vector<int> receive_buffer_sizes{};
 
+  bool finished{false};
+
 public:
+  std::thread sender_thread{};
   DistinctMerge() = default;
   DistinctMerge(const std::vector<int *> &receive_buffers,
                 const std::vector<int> &receive_buffer_sizes);
@@ -38,6 +41,8 @@ public:
   void sender();
 
   void set_rdma_client(UcxRdmaClient *rdma_client);
+
+  void finish();
 };
 
 struct DistinctMergeGPU {

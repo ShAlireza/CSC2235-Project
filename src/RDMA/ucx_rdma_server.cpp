@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <thread>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
 
@@ -149,7 +150,11 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
 
   if (server->clients_ready == MAX_CLIENTS) { // NEW
     size_t total_size = 2 * server->buffer_size;
-    server->rdma_buffer = calloc(1, total_size);
+    server->rdma_buffer =
+        calloc(1, total_size +
+                      2 * sizeof(int)); // 2 * sizeof(int) is because we are
+                                        // holding a counter per sender to
+                                        // notify server about new data arrival.
     server->send_buffer = calloc(1, total_size); // NEW
     // Note that we still allocate total size, which might be too much,
     // but we dont know how many duplicates there will be, so its fine
@@ -158,7 +163,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                                             UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
                                             UCP_MEM_MAP_PARAM_FIELD_LENGTH,
                                         .address = server->rdma_buffer,
-                                        .length = total_size};
+                                        .length = total_size + 2 * sizeof(int)};
 
     ucs_status_t status =
         ucp_mem_map(server->context, &mmap_params, &server->memh);
@@ -174,7 +179,10 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     // Now send the rkey back to the clients
     for (int i = 0; i < MAX_CLIENTS; i++) { // NEW
       if (client_eps[i] != NULL) {
-        send_rkey_to_client(client_eps[i], server, i * server->buffer_size);
+        send_rkey_to_client(
+            client_eps[i], server,
+            i * (server->buffer_size + sizeof(int))); // first index is used for
+                                                      // the counter
       }
     }
   }
@@ -189,6 +197,36 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
   ucp_ep_create(worker, &ep_params, &client_eps[client_count]);
   client_count++;
   printf("Server: client connected\n");
+}
+
+void receiver_thread(int *buffer) {
+  int old_counter = 0;
+
+  while (1) {
+    int counter = buffer[0];
+
+    if (counter != old_counter) {
+      if (counter == -1) {
+        printf("Server: Received end of stream signal\n");
+        while (buffer[old_counter++] != 0) {
+          // TODO: deduplicate data
+          // TODO: memcpy data to send buffer
+          printf("%d ", buffer[old_counter]);
+        }
+        printf("\n");
+        break;
+      } else {
+        printf("Server: Received new data from client %d\n", buffer[0]);
+        // Process the data
+        for (int i = old_counter; i < counter; i++) {
+          // TODO: deduplicate data
+          // TODO: memcpy data to send buffer
+          printf("%d ", buffer[i]);
+        }
+        old_counter = counter;
+      }
+    }
+  }
 }
 
 int start_ucx_server(uint16_t port) {
@@ -239,62 +277,50 @@ int start_ucx_server(uint16_t port) {
       .conn_handler = {.cb = on_connection, .arg = server->worker}};
   ucp_listener_create(server->worker, &listener_params, &(server->listener));
   printf("Server is listening on port %d\n", PORT);
+
+  std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
+  std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
+                                                    server->buffer_size +
+                                                    sizeof(int));
   while (1) {
     ucp_worker_progress(server->worker);
 
-    if (server->rdma_buffer != NULL) {
-      int *buffer = (int *)server->rdma_buffer;
-      size_t entries_per_buffer = server->buffer_size / sizeof(int);
-
-      printf("=== Buffer 1 ===\n");
-      for (size_t i = 0; i < entries_per_buffer; i++) {
-        printf("%d ", buffer[i]);
-      }
-      printf("\n");
-
-      printf("=== Buffer 2 ===\n");
-      for (size_t i = 0; i < entries_per_buffer; i++) {
-        printf("%d ", buffer[entries_per_buffer + i]);
-      }
-      printf("\n");
-
-      printf("------------------------------------------------------------\n");
-    }
-
+    // if (server->rdma_buffer != NULL) {
+    //   int *buffer = (int *)server->rdma_buffer;
+    //   size_t entries_per_buffer = server->buffer_size / sizeof(int);
+    //
+    //   printf("=== Buffer 1 ===\n");
+    //   for (size_t i = 0; i < entries_per_buffer; i++) {
+    //     printf("%d ", buffer[i]);
+    //   }
+    //   printf("\n");
+    //
+    //   printf("=== Buffer 2 ===\n");
+    //   for (size_t i = 0; i < entries_per_buffer; i++) {
+    //     printf("%d ", buffer[entries_per_buffer + i]);
+    //   }
+    //   printf("\n");
+    //
+    //   printf("------------------------------------------------------------\n");
+    // }
+    //
     // Check if the last element in both halves is non-zero
     if (server->rdma_buffer != NULL &&
-        (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) - 1] !=
-         0) &&
-        (((int *)server->rdma_buffer)[(2 * server->buffer_size / sizeof(int)) -
-                                      1] != 0)) {
-      sleep(2);
-      printf("Both buffers appear full (last entries non-zero)\n");
+        (((int *)server->rdma_buffer)[0] == -1) &&
+        (((int *)server->rdma_buffer)[server->buffer_size + sizeof(int)] ==
+         -1)) {
+      // sleep(2);
+      printf("Both clients finished sending data\n");
       // Now that they are full, we should iterate over the buffer and use the
       // seen values map to check if we've seen the value before. If the value
       // is unique, we can put it into the send_buffer. Otherwise, we can ignore
       // it.
-      int *input = (int *)server->rdma_buffer;
-      int *send_buffer = (int *)server->send_buffer;
-      int total_entries = 2 * (server->buffer_size / sizeof(int));
-      printf("Total entries: %d\n", total_entries);
-      int unique_index = 0;
-
-      for (size_t i = 0; i < total_entries; i++) {
-        int value = input[i];
-        printf("Value: %d\n", value);
-        if (server->seen_values.find(value) ==
-            server->seen_values.end()) { // if not found
-          printf("Value not found in map\n");
-          server->seen_values.emplace(value, true);
-          printf("Adding value to map\n");
-          // Instead of writing at send_buffer[i], use unique_index
-          send_buffer[unique_index] = value;
-          unique_index++;
-          printf("Unique value: %d stored at index %d\n", value,
-                 unique_index - 1);
-        }
-      }
+      // int *input = (int *)server->rdma_buffer;
+      // int *send_buffer = (int *)server->send_buffer;
+      // int total_entries = 2 * (server->buffer_size / sizeof(int));
       // printf("Total entries: %d\n", total_entries);
+      // int unique_index = 0;
+
       // for (size_t i = 0; i < total_entries; i++) {
       //   int value = input[i];
       //   printf("Value: %d\n", value);
@@ -303,12 +329,17 @@ int start_ucx_server(uint16_t port) {
       //     printf("Value not found in map\n");
       //     server->seen_values.emplace(value, true);
       //     printf("Adding value to map\n");
-      //     // Add the value to the send buffer
-      //     send_buffer[i] = value;
-      //     printf("Unique value: %d\n", value);
+      //     // Instead of writing at send_buffer[i], use unique_index
+      //     send_buffer[unique_index] = value;
+      //     unique_index++;
+      //     printf("Unique value: %d stored at index %d\n", value,
+      //            unique_index - 1);
       //   }
       // }
     }
+
+    client1_receiver.join();
+    client2_receiver.join();
 
     usleep(1000);
   }

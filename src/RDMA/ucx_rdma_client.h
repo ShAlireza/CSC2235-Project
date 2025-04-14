@@ -12,7 +12,7 @@ public:
     UcxRdmaClient(const std::string &server_ip, size_t buffer_size, size_t chunk_size);
     ~UcxRdmaClient();
 
-    void send_chunk(int *data, size_t size);
+    void send_chunk(int *data, size_t size, bool final = false);
     void finish(); // Signals the sender thread to flush and exit
 
     void init_ucx(const std::string &server_ip);

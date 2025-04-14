@@ -51,10 +51,13 @@ int main(int argc, char *argv[]) {
   std::cout << "Starting GPU 2 merger" << std::endl;
   std::thread t2(start_deduplication, std::ref(merger_gpu2));
 
-  while(true);
+  // while(true);
 
   t1.join();
   t2.join();
+
+  merger.finish();
+  merger.sender_thread.join();
 
   rdma_client->finish();
   delete rdma_client;

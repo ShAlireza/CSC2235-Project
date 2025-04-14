@@ -1,3 +1,4 @@
+#include "RDMA/ucx_rdma_client.h"
 #include "distinct_merge.h"
 #include "utils.h"
 #include <cstdlib>
@@ -5,15 +6,15 @@
 #include <math.h>
 #include <mutex>
 #include <thread>
-#include "RDMA/ucx_rdma_client.h"
 
 DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
                              const std::vector<int> &receive_buffer_sizes)
     : receive_buffers(receive_buffers),
-      receive_buffer_sizes(receive_buffer_sizes){
+      receive_buffer_sizes(receive_buffer_sizes) {
 
   this->send_buffer = (int *)malloc(DISTINCT_MERGE_BUFFER_SIZE * sizeof(int));
   std::thread sender_thread(&DistinctMerge::sender, this);
+  this->sender_thread = std::move(sender_thread);
   sender_thread.detach();
 }
 
@@ -56,32 +57,79 @@ void DistinctMerge::sender() {
 
   std::cout << "In sender thread" << std::endl;
   while (true) {
+
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
-    if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-      // std::cout << "[Sender] Threshold reached: " << difference << " values ready\n";
 
-      while (difference >= DISTINCT_MERGE_SEND_CHUNK_SIZE){
+    if (this->finished) {
+      std::cout << "Sender thread finished" << std::endl;
+      while (difference >= DISTINCT_MERGE_SEND_CHUNK_SIZE) {
         std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
         int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
         int chunk_bytes = DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int);
+        lock.unlock();
 
         if (this->rdma_client != nullptr) {
-            std::cout << "[Sender] Sending chunk of size " << chunk_bytes << std::endl;
+          std::cout << "[Sender] Sending chunk of size " << chunk_bytes
+                    << std::endl;
 
-            this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
-        }
-        else {
-            std::cout << "[Sender] RDMA client is not set, skipping send" << std::endl;
+          this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
+        } else {
+          std::cout << "[Sender] RDMA client is not set, skipping send"
+                    << std::endl;
         }
         this->send_buffer_start_index += DISTINCT_MERGE_SEND_CHUNK_SIZE;
 
-        difference = std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
-        
+        difference = std::abs(this->send_buffer_start_index -
+                              this->send_buffer_end_index);
+      }
+
+      std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+      int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
+      int chunk_bytes =  difference * sizeof(int);
+      lock.unlock();
+
+      if (this->rdma_client != nullptr) {
+        std::cout << "[Sender] Sending chunk of size " << chunk_bytes
+                  << std::endl;
+
+        this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
+      } else {
+        std::cout << "[Sender] RDMA client is not set, skipping send"
+                  << std::endl;
+      }
+
+      break;
+    }
+    if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+      // std::cout << "[Sender] Threshold reached: " << difference << " values
+      // ready\n";
+
+      while (difference >= DISTINCT_MERGE_SEND_CHUNK_SIZE) {
+        std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+        int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
+        int chunk_bytes = DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int);
+        lock.unlock();
+
+        if (this->rdma_client != nullptr) {
+          std::cout << "[Sender] Sending chunk of size " << chunk_bytes
+                    << std::endl;
+
+          this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
+        } else {
+          std::cout << "[Sender] RDMA client is not set, skipping send"
+                    << std::endl;
+        }
+        this->send_buffer_start_index += DISTINCT_MERGE_SEND_CHUNK_SIZE;
+
+        difference = std::abs(this->send_buffer_start_index -
+                              this->send_buffer_end_index);
       }
     }
   }
 }
+
+void DistinctMerge::finish() { this->finished = true; }
 
 DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size)
     : gpu_id(gpu_id), tuples_count(tuples_count), chunk_size(chunk_size) {
