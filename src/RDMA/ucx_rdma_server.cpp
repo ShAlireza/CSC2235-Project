@@ -279,7 +279,7 @@ int start_ucx_server(uint16_t port) {
       printf("Total entries: %d\n", total_entries);
       for (size_t i = 0; i < total_entries; i++) {
         int value = input[i];
-        pritnf("Value: %d\n", value);
+        printf("Value: %d\n", value);
         if (server->seen_values.find(value) ==
             server->seen_values.end()) { // if not found
           printf("Value not found in map\n");
