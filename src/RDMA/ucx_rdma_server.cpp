@@ -276,19 +276,19 @@ int start_ucx_server(uint16_t port) {
       int *input = (int *)server->rdma_buffer;
       int *send_buffer = (int *)server->send_buffer;
       int total_entries = 2 * (server->buffer_size / sizeof(int));
-      printf("Total entries: %d\n", total_entries);
-      for (size_t i = 0; i < total_entries; i++) {
-        int value = input[i];
-        printf("Value: %d\n", value);
-        if (server->seen_values.find(value) ==
-            server->seen_values.end()) { // if not found
-          printf("Value not found in map\n");
-          server->seen_values.emplace(value, true);
-          printf("Adding value to map\n");
-          // Add the value to the send buffer
-          send_buffer[i] = value;
-          printf("Unique value: %d\n", value);
-        }
+      // printf("Total entries: %d\n", total_entries);
+      // for (size_t i = 0; i < total_entries; i++) {
+      //   int value = input[i];
+      //   printf("Value: %d\n", value);
+      //   if (server->seen_values.find(value) ==
+      //       server->seen_values.end()) { // if not found
+      //     printf("Value not found in map\n");
+      //     server->seen_values.emplace(value, true);
+      //     printf("Adding value to map\n");
+      //     // Add the value to the send buffer
+      //     send_buffer[i] = value;
+      //     printf("Unique value: %d\n", value);
+      //   }
       }
     }
 
