@@ -10,6 +10,7 @@ LDFLAGS = $(UCX_LIB)
 
 # Paths to RDMA source files
 RDMA_DIR = RDMA
+RDMA_MAKEFILE = $(RDMA_DIR)/Makefile
 RDMA_OBJS = $(RDMA_DIR)/ucx_rdma_client.o
 
 # Main files
@@ -19,10 +20,11 @@ CU_OBJ = deduplicate.o
 # Final binary
 TARGET = deduplicate
 
-all: $(TARGET)
+all: $(RDMA_OBJS) $(TARGET)
 
-$(RDMA_DIR)/ucx_rdma_client.o: $(RDMA_DIR)/ucx_rdma_client.cpp $(RDMA_DIR)/ucx_rdma_client.h
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
+# Build RDMA components by calling its Makefile
+$(RDMA_OBJS):
+	$(MAKE) -C $(RDMA_DIR) ucx_rdma_client.o
 
 distinct_merge.o: distinct_merge.cu distinct_merge.h
 	$(NVCC) -c $< -o $@ -Xcompiler "-std=c++17 -pthread" $(UCX_INCLUDE)
@@ -34,4 +36,5 @@ $(TARGET): $(RDMA_OBJS) $(SRC_OBJS) $(CU_OBJ)
 	$(NVCC) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f *.o $(RDMA_DIR)/*.o $(TARGET)
+	$(MAKE) -C $(RDMA_DIR) clean
+	rm -f *.o $(TARGET)
