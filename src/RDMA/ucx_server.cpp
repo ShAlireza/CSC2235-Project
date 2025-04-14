@@ -226,6 +226,11 @@ int start_ucx_server(uint16_t port) {
       for (int i = 0; i < 40 / sizeof(int); i++) {
         printf("%d ", ((int *)server->rdma_buffer)[i]);
       }
+      // Print the last 10 integers
+      for (int i = server->buffer_size / sizeof(int) - 10;
+           i < server->buffer_size / sizeof(int); i++) {
+        printf("%d ", ((int *)server->rdma_buffer)[i]);
+      }
       printf("\n");
       printf("------------------------------------------------------------\n");
 
