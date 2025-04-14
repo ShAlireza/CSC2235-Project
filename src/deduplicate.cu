@@ -1,5 +1,5 @@
 #include "distinct_merge.h"
-#include "../UCXTests/RDMA/ucx_rdma_client.h"
+#include "RDMA/ucx_rdma_client.h"
 
 #include <iostream>
 #include <thread>

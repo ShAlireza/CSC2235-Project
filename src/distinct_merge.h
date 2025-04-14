@@ -4,7 +4,7 @@
 #include <map>
 #include <mutex>
 #include <vector>
-#include "../UCXTests/RDMA/ucx_rdma_client.h"
+#include "RDMA/ucx_rdma_client.h"
 
 #define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size

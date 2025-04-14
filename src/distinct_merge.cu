@@ -5,7 +5,7 @@
 #include <math.h>
 #include <mutex>
 #include <thread>
-#include "../UCXTests/RDMA/ucx_rdma_client.h"
+#include "RDMA/ucx_rdma_client.h"
 
 DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
                              const std::vector<int> &receive_buffer_sizes)
