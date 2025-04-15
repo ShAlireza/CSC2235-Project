@@ -205,8 +205,8 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     // Note that we still allocate total size, which might be too much,
     // but we dont know how many duplicates there will be, so its fine
 
-    std::memset(server->rdma_buffer, -2, total_size + 2 * sizeof(int));
-    std::memset(server->send_buffer, -2, total_size);
+    std::memset(server->rdma_buffer, 9999, total_size + 2 * sizeof(int));
+    std::memset(server->send_buffer, 9999, total_size);
 
     std::memset((int *)server->rdma_buffer, 0, sizeof(int));
     std::memset((int *)server->rdma_buffer + server->buffer_size + sizeof(int), 0,
