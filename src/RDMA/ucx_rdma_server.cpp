@@ -335,6 +335,7 @@ int start_ucx_server(uint16_t port) {
          -1)) {
       // sleep(2);
       printf("Both clients finished sending data\n");
+      break;
       // Now that they are full, we should iterate over the buffer and use the
       // seen values map to check if we've seen the value before. If the value
       // is unique, we can put it into the send_buffer. Otherwise, we can ignore
