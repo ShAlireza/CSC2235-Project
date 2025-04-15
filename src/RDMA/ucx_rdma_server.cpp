@@ -8,6 +8,7 @@
 #include <thread>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
+#include <iostream>
 
 #define AM_ID 1
 #define PORT 13337
@@ -46,6 +47,7 @@ void receiver_thread(int *buffer) {
 
   while (1) {
     int counter = buffer[0];
+    std::cout << "Server: Received counter " << counter << std::endl;
 
     if (counter != old_counter) {
       if (counter == -1) {
