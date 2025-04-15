@@ -56,7 +56,7 @@ void receiver_thread(int *buffer) {
     if (counter != old_counter) {
       if (counter == -1) {
         printf("Server: Received end of stream signal\n");
-        for (int i = 0; i < 32; i++) {
+        for (int i = 0; i < 10; i++) {
           printf("%d ", buffer[1 + i]);
         }
         printf("\n");
@@ -74,7 +74,7 @@ void receiver_thread(int *buffer) {
         for (int i = old_counter; i < counter; i++) {
           // TODO: deduplicate data
           // TODO: memcpy data to send buffer
-          printf("%d ", 1000 + buffer[1 + i]);
+          printf("%d ", buffer[1 + i]);
         }
         printf("\n");
         old_counter = counter;
