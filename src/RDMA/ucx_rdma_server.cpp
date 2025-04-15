@@ -100,6 +100,8 @@ public:
     this->send_buffer[this->send_buffer_end_index++] = value;
     std::cout << "Sender thread: end index: " << this->send_buffer_end_index
               << std::endl;
+    std::cout << "Sender thread: start index: " << this->send_buffer_start_index
+              << std::endl;
 
     lock.unlock();
 
