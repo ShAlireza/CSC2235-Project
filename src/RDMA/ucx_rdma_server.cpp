@@ -174,12 +174,14 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
         // printf("\n");
         //
         while (buffer[1 + old_counter] != 0) {
-          if (verbose)
-            printf("%d ", 1000 + buffer[1 + old_counter++]);
-          // int check_value = merger->check_value(buffer[1 + old_counter++]);
-          // if (check_value != -1) {
-          //   merger->stage(check_value);
-          // }
+          if (verbose) {
+            printf("%d", 1000 + buffer[1 + old_counter]);
+            int check_value = merger->check_value(buffer[1 + old_counter++]);
+            printf("%xd ", check_value);
+            if (check_value != -1) {
+              merger->stage(check_value);
+            }
+          }
         }
         printf("\n");
 
