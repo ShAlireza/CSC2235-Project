@@ -57,6 +57,8 @@ int main(int argc, char *argv[]) {
   t2.join();
 
   merger.finish();
+
+  std::cout << "Joining the sender thread and closing it..." << std::endl;
   merger.sender_thread.join();
 
   rdma_client->finish();
