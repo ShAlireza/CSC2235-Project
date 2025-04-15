@@ -19,8 +19,7 @@
 
 #define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size
-#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 256
-#define DISTINCT_MERGE_SEND_CHUNK_SIZE 1024 * 128
+#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 1024
 
 static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
 static int client_count = 0;
