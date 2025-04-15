@@ -8,8 +8,8 @@
 
 #define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size
-#define DISTINCT_MERGE_BUFFER_THRESHOLD 16
-#define DISTINCT_MERGE_SEND_CHUNK_SIZE 8
+#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 256
+#define DISTINCT_MERGE_SEND_CHUNK_SIZE 1024 * 1024
 
 struct DistinctMerge {
 private:
