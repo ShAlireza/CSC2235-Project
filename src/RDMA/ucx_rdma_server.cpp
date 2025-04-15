@@ -239,10 +239,10 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
       }
     }
 
+    unsigned long client2_addr = (unsigned long)(server->rdma_buffer) + server->buffer_size + sizeof(int);
+
     std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
-    std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
-                                                      server->buffer_size +
-                                                      sizeof(int));
+    std::thread client2_receiver(receiver_thread, (int *)client2_addr);
     printf("Client1 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer));
     printf("Client2 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer) +
                                              server->buffer_size + sizeof(int));
