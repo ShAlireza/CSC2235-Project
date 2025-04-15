@@ -55,6 +55,8 @@ private:
   std::mutex send_buffer_mutex{};
   std::mutex seen_values_mutex{};
 
+  bool first_chunk_started{false};
+
   bool finished{false};
 
 public:
@@ -127,6 +129,16 @@ public:
           std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
       if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+        if (this->first_chunk_started == false) {
+          this->first_chunk_started = true;
+          // Print timestamp in nanoseconds
+          auto time_now = std::chrono::high_resolution_clock::now();
+          auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                              time_now.time_since_epoch())
+                              .count();
+          printf("Sender thread: First chunk started at timestamp %ld\n",
+                 duration);
+        }
         // std::cout << "Sender thread: Threshold reached - difference: "
         //           << difference << std::endl;
         int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
@@ -138,7 +150,8 @@ public:
         current_offset += difference;
 
         this->send_buffer_start_index += difference;
-        difference = std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
+        difference = std::abs(this->send_buffer_start_index -
+                              this->send_buffer_end_index);
       }
 
       if (this->finished) {
@@ -162,6 +175,13 @@ public:
           current_offset += difference;
           this->send_buffer_start_index += difference;
         }
+
+        // Print timestamp in nanoseconds
+        auto time_now = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            time_now.time_since_epoch())
+                            .count();
+        printf("Sender thread: Flushing data to GPU at timestamp %ld\n", duration);
         this->done_flushing = true;
         break;
       }
@@ -171,7 +191,8 @@ public:
   void finish() { this->finished = true; }
 };
 
-void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
+void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
+                     int client_id) {
   int old_counter = 0;
   // printf("Buffer addr: %lu\n", (unsigned long)buffer);
 
@@ -180,12 +201,16 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
 
     if (counter != old_counter) {
       if (counter == -1) {
-        printf("Server: Received end of stream signal\n");
-        // for (int i = 0; i < 32; i++) {
-        //   printf("%d ", buffer[1 + i]);
-        // }
-        // printf("\n");
-        //
+        // Print timestamp in nanoseconds
+        auto time_now = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            time_now.time_since_epoch())
+                            .count();
+        printf(
+            "[%d]RDMA Server: Received end of stream signal at timestamp %ld\n",
+            client_id, duration);
+
+        auto start_time = std::chrono::high_resolution_clock::now();
         while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
           int check_value = merger->check_value(buffer[1 + old_counter]);
           if (verbose) {
@@ -197,6 +222,12 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
           }
           old_counter++;
         }
+        auto end_time = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                       end_time - start_time)
+                       .count();
+        printf("[%d]RDMA Server: deduplication took %ld\n", client_id,
+               duration);
         // printf("\n");
 
         // int tuples_count = 0;
@@ -204,13 +235,19 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
       } else {
         // printf("Server: Received new data from client %d\n", buffer[0]);
         // Process the data
+        auto start_time = std::chrono::high_resolution_clock::now();
         for (int i = old_counter; i < counter; i++) {
           int check_value = merger->check_value(buffer[1 + i]);
           if (check_value != -2) {
             merger->stage(check_value);
           }
         }
-        printf("\n");
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            end_time - start_time)
+                            .count();
+        printf("[%d]RDMA Server: deduplication took %ld\n", client_id,
+               duration);
         old_counter = counter;
       }
     }
