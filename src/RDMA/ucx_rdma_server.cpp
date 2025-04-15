@@ -201,7 +201,7 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
         // Process the data
         for (int i = old_counter; i < counter; i++) {
           int check_value = merger->check_value(buffer[1 + i]);
-          if (check_value != -1) {
+          if (check_value != -2) {
             merger->stage(check_value);
           }
         }
