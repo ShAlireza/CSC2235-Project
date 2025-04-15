@@ -101,7 +101,8 @@ public:
     this->send_buffer[this->send_buffer_end_index++] = value;
     // std::cout << "Sender thread: end index: " << this->send_buffer_end_index
     //           << std::endl;
-    // std::cout << "Sender thread: start index: " << this->send_buffer_start_index
+    // std::cout << "Sender thread: start index: " <<
+    // this->send_buffer_start_index
     //           << std::endl;
 
     lock.unlock();
@@ -170,8 +171,6 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
 
   while (1) {
     int counter = buffer[0];
-    if (counter == -1)
-      std::cout << "Server: Received counter " << counter << std::endl;
 
     if (counter != old_counter) {
       if (counter == -1) {
@@ -197,7 +196,7 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
         // int tuples_count = 0;
         break;
       } else {
-        printf("Server: Received new data from client %d\n", buffer[0]);
+        // printf("Server: Received new data from client %d\n", buffer[0]);
         // Process the data
         for (int i = old_counter; i < counter; i++) {
           int check_value = merger->check_value(buffer[1 + i]);
@@ -466,7 +465,9 @@ int start_ucx_server(uint16_t port) {
 
       client1_receiver.join();
       client2_receiver.join();
+
       printf("Both clients finished sending data\n");
+
       server->merger->finish();
 
       break;
