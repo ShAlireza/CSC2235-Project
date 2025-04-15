@@ -6,7 +6,7 @@
 
 #define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 2
 #define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
-#define DESTINATION_HOST_IP "localhost" // For now
+#define DESTINATION_HOST_IP "172.16.146.10" // For now
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
