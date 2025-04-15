@@ -42,7 +42,6 @@ struct ucx_server_t {
   size_t chunk_size;
   int clients_ready;
   std::map<int, bool> seen_values{};
-  void *send_buffer;
   DistinctMergeDest *merger{nullptr};
 };
 
@@ -310,7 +309,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                       2 * sizeof(int)); // 2 * sizeof(int) is because we are
                                         // holding a counter per sender to
                                         // notify server about new data arrival.
-    server->send_buffer = calloc(1, total_size); // NEW
+    // server->send_buffer = calloc(1, total_size); // NEW
     // Note that we still allocate total size, which might be too much,
     // but we dont know how many duplicates there will be, so its fine
 
@@ -506,8 +505,8 @@ int start_ucx_server(uint16_t port) {
   }
   std::cout << std::endl;
 
-  // ucp_mem_unmap(server->context, server->memh);
-  // free(server->rdma_buffer);
+  ucp_mem_unmap(server->context, server->memh);
+  free(server->rdma_buffer);
   ucp_listener_destroy(server->listener);
   ucp_worker_destroy(server->worker);
   ucp_cleanup(server->context);
