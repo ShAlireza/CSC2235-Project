@@ -461,7 +461,7 @@ int start_ucx_server(uint16_t port) {
       std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
                                    merger, false);
       std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
-                                   true);
+                                   false);
 
       client1_receiver.join();
       client2_receiver.join();
