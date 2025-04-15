@@ -226,6 +226,11 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     printf("Server RDMA buffer size is %ld\n", total_size);
     printf("Server: Both clients are ready, buffer allocated\n");
 
+    for (int i = 0; i < 70; i++) {
+      printf("%d ", ((int *)server->rdma_buffer)[i]);
+    }
+    printf("\n");
+
     // Now send the rkey back to the clients
     for (int i = 0; i < MAX_CLIENTS; i++) { // NEW
       if (client_eps[i] != NULL) {
@@ -236,9 +241,6 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
       }
     }
 
-    for (int i = 0; i < 70; i++) {
-      printf("%d ", ((int *)server->rdma_buffer)[i]);
-    }
     std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
     std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
                                                       server->buffer_size +
