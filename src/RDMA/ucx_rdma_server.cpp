@@ -168,17 +168,19 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger) {
     if (counter != old_counter) {
       if (counter == -1) {
         printf("Server: Received end of stream signal\n");
-        for (int i = 0; i < 32; i++) {
-          printf("%d ", buffer[1 + i]);
-        }
-        printf("\n");
-
+        // for (int i = 0; i < 32; i++) {
+        //   printf("%d ", buffer[1 + i]);
+        // }
+        // printf("\n");
+        //
         while (buffer[1 + old_counter] != 0) {
+          printf("%d ", buffer[1 + old_counter]);
           int check_value = merger->check_value(buffer[1 + old_counter++]);
           if (check_value != -1) {
             merger->stage(check_value);
           }
         }
+        printf("\n");
 
         // int tuples_count = 0;
         break;
