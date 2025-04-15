@@ -43,6 +43,7 @@ struct ucx_server_t {
   int clients_ready;
   std::map<int, bool> seen_values{};
   DistinctMergeDest *merger{nullptr};
+  bool initialize_threads{false};
 };
 
 struct DistinctMergeDest {
@@ -126,7 +127,8 @@ public:
           std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
       if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-        std::cout << "Sender thread: Threshold reached - difference: " << difference << std::endl;
+        std::cout << "Sender thread: Threshold reached - difference: "
+                  << difference << std::endl;
         int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
         int chunk_bytes = difference * sizeof(int);
 
@@ -139,7 +141,8 @@ public:
       }
 
       if (this->finished) {
-        std::cout << "Sender thread: Sender flushing - difference: " << difference << std::endl;
+        std::cout << "Sender thread: Sender flushing - difference: "
+                  << difference << std::endl;
         std::cout << "Sender thread finished" << std::endl;
 
         if (difference > 0) {
@@ -360,19 +363,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
       }
     }
 
-    unsigned long client2_addr = (unsigned long)(server->rdma_buffer) +
-                                 server->buffer_size + sizeof(int);
-
-    DistinctMergeDest *merger = new DistinctMergeDest(2 * server->buffer_size);
-    server->merger = merger;
-
-    std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
-                                 merger, false);
-    std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
-                                 true);
-
-    client1_receiver.detach();
-    client2_receiver.detach();
+    server->initialize_threads = true;
   }
 
   return UCS_OK;
@@ -460,40 +451,61 @@ int start_ucx_server(uint16_t port) {
     // }
     //
     // Check if the last element in both halves is non-zero
-    if (server->rdma_buffer != NULL &&
-        (((int *)server->rdma_buffer)[0] == -1) &&
-        (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) + 1] ==
-         -1)) {
-      // sleep(2);
+    if (server->initialize_threads) {
+      unsigned long client2_addr = (unsigned long)(server->rdma_buffer) +
+                                   server->buffer_size + sizeof(int);
+
+      DistinctMergeDest *merger =
+          new DistinctMergeDest(2 * server->buffer_size);
+      server->merger = merger;
+
+      std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
+                                   merger, false);
+      std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
+                                   true);
+
+      client1_receiver.join();
+      client2_receiver.join();
       printf("Both clients finished sending data\n");
       server->merger->finish();
-      break;
-      // Now that they are full, we should iterate over the buffer and use the
-      // seen values map to check if we've seen the value before. If the value
-      // is unique, we can put it into the send_buffer. Otherwise, we can ignore
-      // it.
-      // int *input = (int *)server->rdma_buffer;
-      // int *send_buffer = (int *)server->send_buffer;
-      // int total_entries = 2 * (server->buffer_size / sizeof(int));
-      // printf("Total entries: %d\n", total_entries);
-      // int unique_index = 0;
 
-      // for (size_t i = 0; i < total_entries; i++) {
-      //   int value = input[i];
-      //   printf("Value: %d\n", value);
-      //   if (server->seen_values.find(value) ==
-      //       server->seen_values.end()) { // if not found
-      //     printf("Value not found in map\n");
-      //     server->seen_values.emplace(value, true);
-      //     printf("Adding value to map\n");
-      //     // Instead of writing at send_buffer[i], use unique_index
-      //     send_buffer[unique_index] = value;
-      //     unique_index++;
-      //     printf("Unique value: %d stored at index %d\n", value,
-      //            unique_index - 1);
-      //   }
-      // }
+      break;
     }
+    // if (server->rdma_buffer != NULL &&
+    //     (((int *)server->rdma_buffer)[0] == -1) &&
+    //     (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) + 1]
+    //     ==
+    //      -1)) {
+    // sleep(2);
+    // printf("Both clients finished sending data\n");
+    // server->merger->finish();
+    // break;
+    // Now that they are full, we should iterate over the buffer and use the
+    // seen values map to check if we've seen the value before. If the value
+    // is unique, we can put it into the send_buffer. Otherwise, we can ignore
+    // it.
+    // int *input = (int *)server->rdma_buffer;
+    // int *send_buffer = (int *)server->send_buffer;
+    // int total_entries = 2 * (server->buffer_size / sizeof(int));
+    // printf("Total entries: %d\n", total_entries);
+    // int unique_index = 0;
+
+    // for (size_t i = 0; i < total_entries; i++) {
+    //   int value = input[i];
+    //   printf("Value: %d\n", value);
+    //   if (server->seen_values.find(value) ==
+    //       server->seen_values.end()) { // if not found
+    //     printf("Value not found in map\n");
+    //     server->seen_values.emplace(value, true);
+    //     printf("Adding value to map\n");
+    //     // Instead of writing at send_buffer[i], use unique_index
+    //     send_buffer[unique_index] = value;
+    //     unique_index++;
+    //     printf("Unique value: %d stored at index %d\n", value,
+    //            unique_index - 1);
+    //   }
+    // }
+    // }
 
     usleep(1000);
   }
