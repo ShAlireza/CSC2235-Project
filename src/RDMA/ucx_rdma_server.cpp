@@ -98,6 +98,8 @@ public:
 
     std::cout << value + 4000 << std::endl;
     this->send_buffer[this->send_buffer_end_index++] = value;
+    std::cout << "Sender thread: end index: " << this->send_buffer_end_index
+              << std::endl;
 
     lock.unlock();
 
@@ -112,11 +114,11 @@ public:
     std::cout << "In sender thread" << std::endl;
     while (true) {
 
-      std::cout << "Sender thread: checking send buffer" << std::endl;
-      std::cout << "Sender thread: start index: "
-                << this->send_buffer_start_index << std::endl;
-      std::cout << "Sender thread: end index: " << this->send_buffer_end_index
-                << std::endl;
+      // std::cout << "Sender thread: checking send buffer" << std::endl;
+      // std::cout << "Sender thread: start index: "
+      //           << this->send_buffer_start_index << std::endl;
+      // std::cout << "Sender thread: end index: " << this->send_buffer_end_index
+      //           << std::endl;
       int difference =
           std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
@@ -508,9 +510,10 @@ int start_ucx_server(uint16_t port) {
   std::cout << std::endl;
 
   // Print seen values map from merger
-  for (auto it : server->merger->seen_values) {
-    std::cout << "Key: " << it.first << ", Value: " << it.second << std::endl;
-  }
+  // for (auto it : server->merger->seen_values) {
+  //   std::cout << "Key: " << it.first << ", Value: " << it.second <<
+  //   std::endl;
+  // }
 
   // print last 10 numbers
   // for (int i = server->merger->current_offset - 10;
