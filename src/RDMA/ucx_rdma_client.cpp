@@ -137,14 +137,14 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
   counter_param.cb.send = rdma_cb;
   counter_param.datatype = ucp_dt_make_contig(sizeof(int));
 
+  std::cout << "[RDMA] Writing chunk at offset " << current_offset
+            << " | First value: " << data[0] << std::endl;
+  current_offset += size;
+
   int *counter_value = new int(1);
   *counter_value = current_offset / sizeof(int);
   void *counter_req = ucp_put_nbx(ep, counter_value, sizeof(int), remote_addr,
                                   rkey, &counter_param);
-
-  std::cout << "[RDMA] Writing chunk at offset " << current_offset
-            << " | First value: " << data[0] << std::endl;
-  current_offset += size;
 
   // print the chunk data
   std::cout << "Client: Sending chunk of size " << size << " at address "
