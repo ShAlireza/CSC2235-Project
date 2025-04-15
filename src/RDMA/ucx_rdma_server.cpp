@@ -96,7 +96,7 @@ public:
   bool stage(int value) {
     std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
 
-    std::cout << value + 4000 << std::endl;
+    // std::cout << value + 4000 << std::endl;
     this->send_buffer[this->send_buffer_end_index++] = value;
     std::cout << "Sender thread: end index: " << this->send_buffer_end_index
               << std::endl;
