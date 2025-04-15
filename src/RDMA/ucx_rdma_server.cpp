@@ -85,7 +85,7 @@ public:
     if (it != seen_values.end()) {
       // INFO: We assume that input data are positive integers
       lock.unlock();
-      return -1;
+      return -2;
     } else {
       seen_values.emplace(value, true);
       lock.unlock();
@@ -179,7 +179,7 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
             printf("%d", 1000 + buffer[1 + old_counter]);
             printf("x%d ", check_value);
           }
-          if (check_value != -1) {
+          if (check_value != -2) {
             merger->stage(check_value);
           }
         }
