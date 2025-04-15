@@ -168,7 +168,7 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger) {
     if (counter != old_counter) {
       if (counter == -1) {
         printf("Server: Received end of stream signal\n");
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 32; i++) {
           printf("%d ", buffer[1 + i]);
         }
         printf("\n");
@@ -179,6 +179,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger) {
             merger->stage(check_value);
           }
         }
+
+        // int tuples_count = 0;
         break;
       } else {
         printf("Server: Received new data from client %d\n", buffer[0]);
@@ -493,20 +495,20 @@ int start_ucx_server(uint16_t port) {
              2 * server->buffer_size, cudaMemcpyDeviceToHost);
 
   std::cout << "Offset value: " << server->merger->current_offset << std::endl;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < server->merger->current_offset; i++) {
     std::cout << verification[i] << " ";
   }
   std::cout << std::endl;
 
   // print last 10 numbers
-  for (int i = server->merger->current_offset - 10;
-       i < server->merger->current_offset; i++) {
-    std::cout << verification[i] << " ";
-  }
-  std::cout << std::endl;
+  // for (int i = server->merger->current_offset - 10;
+  //      i < server->merger->current_offset; i++) {
+  //   std::cout << verification[i] << " ";
+  // }
+  // std::cout << std::endl;
 
-  ucp_mem_unmap(server->context, server->memh);
-  free(server->rdma_buffer);
+  // ucp_mem_unmap(server->context, server->memh);
+  // free(server->rdma_buffer);
   ucp_listener_destroy(server->listener);
   ucp_worker_destroy(server->worker);
   ucp_cleanup(server->context);
