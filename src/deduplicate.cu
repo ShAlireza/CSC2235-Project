@@ -4,8 +4,8 @@
 #include <iostream>
 #include <thread>
 
-#define DEDUPLICATION_TUPLES_COUNT 32
-#define DEDUPLICATION_CHUNK_SIZE 16
+#define DEDUPLICATION_TUPLES_COUNT 8
+#define DEDUPLICATION_CHUNK_SIZE 4
 #define DESTINATION_HOST_IP "localhost" // For now
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
