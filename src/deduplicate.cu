@@ -12,16 +12,19 @@ void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
 int main(int argc, char *argv[]) {
 
+  int gpu1 = std::stoi(argv[1]);
+  int gpu2 = std::stoi(argv[2]);
+
   std::cout << std::unitbuf;
 
   std::cout << "Starting deduplication" << std::endl;
 
   std::cout << "Creating GPU merger 1" << std::endl;
-  DistinctMergeGPU merger_gpu1(2, DEDUPLICATION_TUPLES_COUNT,
+  DistinctMergeGPU merger_gpu1(gpu1, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating GPU merger 2" << std::endl;
-  DistinctMergeGPU merger_gpu2(3, DEDUPLICATION_TUPLES_COUNT,
+  DistinctMergeGPU merger_gpu2(gpu2, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating CPU merger" << std::endl;
