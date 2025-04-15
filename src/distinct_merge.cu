@@ -87,7 +87,7 @@ void DistinctMerge::sender() {
       }
     }
 
-    if (this->finished) {
+    if (this->finished && difference > 0) {
       std::cout << "Sender thread finished" << std::endl;
 
       std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
