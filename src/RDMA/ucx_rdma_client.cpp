@@ -119,7 +119,7 @@ void UcxRdmaClient::wait_for_rkey() {
     ucp_worker_progress(worker);
 }
 
-void UcxRdmaClient::send_chunk(int *data, size_t size, bool final) {
+void UcxRdmaClient::send_chunk(int *data, size_t size) {
   ucp_request_param_t put_param = {};
   put_param.op_attr_mask =
       UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_USER_DATA;
@@ -137,14 +137,8 @@ void UcxRdmaClient::send_chunk(int *data, size_t size, bool final) {
 
   int *inc_value = new int(1);
   *inc_value = size / sizeof(int);
-  void *counter_req = nullptr;
-  if (final) {
-    *inc_value = -1;
-    counter_req = ucp_put_nbx(ep, inc_value, sizeof(int),
-                            remote_addr, rkey, &inc_param);
-  } else
-    counter_req = ucp_atomic_op_nbx(ep, UCP_ATOMIC_OP_ADD, inc_value,
-                                          size, remote_addr, rkey, &inc_param);
+  void *counter_req = ucp_atomic_op_nbx(ep, UCP_ATOMIC_OP_ADD, inc_value, size,
+                                        remote_addr, rkey, &inc_param);
 
   std::cout << "[RDMA] Writing chunk at offset " << current_offset
             << " | First value: " << data[0] << std::endl;
@@ -162,6 +156,22 @@ void UcxRdmaClient::send_chunk(int *data, size_t size, bool final) {
   std::lock_guard<std::mutex> lock(requests_mutex);
   requests.push(req);
   requests.push(counter_req);
+}
+
+void UcxRdmaClient::send_finish() {
+  // Send a finish message to the server
+  ucp_request_param_t put_param = {};
+  put_param.op_attr_mask =
+      UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_USER_DATA;
+  put_param.user_data = (void *)(uintptr_t)(requests.size());
+  put_param.cb.send = rdma_cb;
+  int *data = new int[1];
+  *data = -1;
+  void *req = ucp_put_nbx(ep, data, sizeof(int), remote_addr, rkey,
+                          &put_param); // sizeof(int) is because we are using
+                                       // first index as a counter
+
+  requests.push(req);
 }
 
 void UcxRdmaClient::start_sender_thread() {

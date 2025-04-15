@@ -87,23 +87,26 @@ void DistinctMerge::sender() {
       }
     }
 
-    if (this->finished && difference > 0) {
+    if (this->finished) {
       std::cout << "Sender thread finished" << std::endl;
 
-      std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
-      int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
-      int chunk_bytes =  difference * sizeof(int);
-      lock.unlock();
+      if (difference > 0) {
+        std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+        int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
+        int chunk_bytes = difference * sizeof(int);
+        lock.unlock();
 
-      if (this->rdma_client != nullptr) {
-        std::cout << "[Sender] Sending chunk of size " << chunk_bytes
-                  << std::endl;
+        if (this->rdma_client != nullptr) {
+          std::cout << "[Sender] Sending chunk of size " << chunk_bytes
+                    << std::endl;
 
-        this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
-      } else {
-        std::cout << "[Sender] RDMA client is not set, skipping send"
-                  << std::endl;
+          this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
+        } else {
+          std::cout << "[Sender] RDMA client is not set, skipping send"
+                    << std::endl;
+        }
       }
+      this->rdma_client->send_finish();
 
       break;
     }
