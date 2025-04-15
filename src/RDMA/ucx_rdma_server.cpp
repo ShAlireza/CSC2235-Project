@@ -236,6 +236,9 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
       }
     }
 
+    for (int i = 0; i < 70; i++) {
+      printf("%d ", ((int *)server->rdma_buffer)[i]);
+    }
     std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
     std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
                                                       server->buffer_size +
