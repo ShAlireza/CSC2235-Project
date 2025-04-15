@@ -115,9 +115,11 @@ public:
 
       if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
         int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
-        int chunk_bytes = DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int);
+        int chunk_bytes = difference * sizeof(int);
+
         cudaMemcpy(this->destination_buffer + current_offset, chunk_ptr,
                    difference * sizeof(int), cudaMemcpyHostToDevice);
+
         current_offset += difference;
 
         this->send_buffer_start_index += difference;
@@ -129,6 +131,7 @@ public:
         if (difference > 0) {
           int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
           int chunk_bytes = difference * sizeof(int);
+
           cudaMemcpy(this->destination_buffer + current_offset, chunk_ptr,
                      difference * sizeof(int), cudaMemcpyHostToDevice);
 
