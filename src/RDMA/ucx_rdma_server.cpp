@@ -215,6 +215,11 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                                         .address = server->rdma_buffer,
                                         .length = total_size + 2 * sizeof(int)};
 
+    for (int i = 0; i < 70; i++) {
+      printf("%d ", ((int *)server->rdma_buffer)[i]);
+    }
+    printf("\n");
+
     ucs_status_t status =
         ucp_mem_map(server->context, &mmap_params, &server->memh);
 
@@ -225,11 +230,6 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     printf("Server RDMA buffer allocated at %p\n", server->rdma_buffer);
     printf("Server RDMA buffer size is %ld\n", total_size);
     printf("Server: Both clients are ready, buffer allocated\n");
-
-    for (int i = 0; i < 70; i++) {
-      printf("%d ", ((int *)server->rdma_buffer)[i]);
-    }
-    printf("\n");
 
     // Now send the rkey back to the clients
     for (int i = 0; i < MAX_CLIENTS; i++) { // NEW
