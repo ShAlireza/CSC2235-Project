@@ -331,7 +331,7 @@ int start_ucx_server(uint16_t port) {
     // Check if the last element in both halves is non-zero
     if (server->rdma_buffer != NULL &&
         (((int *)server->rdma_buffer)[0] == -1) &&
-        (((int *)server->rdma_buffer)[server->buffer_size + sizeof(int)] ==
+        (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) + 1] ==
          -1)) {
       // sleep(2);
       printf("Both clients finished sending data\n");
