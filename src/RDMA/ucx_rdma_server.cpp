@@ -50,21 +50,20 @@ void receiver_thread(int *buffer) {
     int counter = buffer[0];
     if (counter == -1)
       std::cout << "Server: Received counter " << counter << std::endl;
-    else {
-      for (int i = 0; i < 32; i++) {
-        printf("%d ", buffer[1 + i]);
-      }
-      printf("\n");
-    }
 
     if (counter != old_counter) {
       if (counter == -1) {
         printf("Server: Received end of stream signal\n");
-        while (buffer[1 + old_counter++] != 0) {
-          // TODO: deduplicate data
-          // TODO: memcpy data to send buffer
-          printf("%d ", buffer[1 + old_counter]);
+        for (int i = 0; i < 32; i++) {
+          printf("%d ", buffer[1 + i]);
         }
+        printf("\n");
+
+        // while (buffer[1 + old_counter++] != 0) {
+        //   // TODO: deduplicate data
+        //   // TODO: memcpy data to send buffer
+        //   printf("%d ", buffer[1 + old_counter]);
+        // }
         printf("\n");
         break;
       } else {
