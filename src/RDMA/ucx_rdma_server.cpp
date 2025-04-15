@@ -304,7 +304,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
   // Only allocate the buffer if both clients are ready NEW
 
   if (server->clients_ready == MAX_CLIENTS) { // NEW
-    size_t total_size = 2 * server->buffer_size;
+    size_t total_size = 4 * server->buffer_size;
     server->rdma_buffer =
         calloc(1, total_size +
                       2 * sizeof(int)); // 2 * sizeof(int) is because we are
@@ -349,9 +349,9 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     }
 
     unsigned long client2_addr = (unsigned long)(server->rdma_buffer) +
-                                 server->buffer_size + sizeof(int);
+                                 2 * server->buffer_size + sizeof(int);
 
-    DistinctMergeDest *merger = new DistinctMergeDest(2 * server->buffer_size);
+    DistinctMergeDest *merger = new DistinctMergeDest(4 * server->buffer_size);
     server->merger = merger;
 
     std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
@@ -449,7 +449,7 @@ int start_ucx_server(uint16_t port) {
     // Check if the last element in both halves is non-zero
     if (server->rdma_buffer != NULL &&
         (((int *)server->rdma_buffer)[0] == -1) &&
-        (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) + 1] ==
+        (((int *)server->rdma_buffer)[2 * server->buffer_size / sizeof(int)  + 1] ==
          -1)) {
       // sleep(2);
       printf("Both clients finished sending data\n");
@@ -489,9 +489,9 @@ int start_ucx_server(uint16_t port) {
     ;
 
   int *verification;
-  cudaMallocHost(&verification, 2 * server->buffer_size);
+  cudaMallocHost(&verification, 4 * server->buffer_size);
   cudaMemcpy(verification, server->merger->destination_buffer,
-             2 * server->buffer_size, cudaMemcpyDeviceToHost);
+             4 * server->buffer_size, cudaMemcpyDeviceToHost);
   for (int i = 0; i < 10; i++) {
     std::cout << verification[i] << " ";
   }
