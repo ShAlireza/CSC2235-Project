@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <arpa/inet.h>
+#include <cstring>
 #include <iostream>
 #include <map>
 #include <stdint.h>
@@ -203,12 +205,12 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     // Note that we still allocate total size, which might be too much,
     // but we dont know how many duplicates there will be, so its fine
 
-    // memset(server->rdma_buffer, -2, total_size + 2 * sizeof(int));
-    // memset(server->send_buffer, -2, total_size);
-    //
-    // memset((int *)server->rdma_buffer, 0, sizeof(int));
-    // memset((int *)server->rdma_buffer + server->buffer_size + sizeof(int), 0,
-    //        sizeof(int));
+    std::memset(server->rdma_buffer, -2, total_size + 2 * sizeof(int));
+    std::memset(server->send_buffer, -2, total_size);
+
+    std::memset((int *)server->rdma_buffer, 0, sizeof(int));
+    std::memset((int *)server->rdma_buffer + server->buffer_size + sizeof(int), 0,
+           sizeof(int));
     ucp_mem_map_params_t mmap_params = {.field_mask =
                                             UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
                                             UCP_MEM_MAP_PARAM_FIELD_LENGTH,
