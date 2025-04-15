@@ -359,8 +359,9 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     server->merger = merger;
 
     std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
-                                 merger, true);
-    std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger, false);
+                                 merger, false);
+    std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
+                                 true);
 
     client1_receiver.detach();
     client2_receiver.detach();
