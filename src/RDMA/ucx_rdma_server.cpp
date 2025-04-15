@@ -54,17 +54,14 @@ private:
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
 
-  int current_offset{0};
-
   std::mutex send_buffer_mutex{};
   std::mutex seen_values_mutex{};
-
-  int *destination_buffer;
 
   bool finished{false};
 
 public:
-  std::thread sender_thread{};
+  int current_offset{0};
+  int *destination_buffer;
 
   bool done_flushing{false};
 
@@ -73,9 +70,9 @@ public:
     cudaMallocHost((void **)&this->send_buffer, send_buffer_size);
     cudaMalloc((void **)&this->destination_buffer, send_buffer_size);
 
-    std::thread sender_thread(
-      &DistinctMergeDest::sender, this); // Start the sender thread
-    
+    std::thread sender_thread(&DistinctMergeDest::sender,
+                              this); // Start the sender thread
+
     sender_thread.detach();
   };
 
@@ -490,6 +487,22 @@ int start_ucx_server(uint16_t port) {
 
   while (!server->merger->done_flushing)
     ;
+
+  int *verification;
+  cudaMallocHost(&verification, 2 * server->buffer_size);
+  cudaMemcpy(verification, server->merger->destination_buffer,
+             2 * server->buffer_size, cudaMemcpyDeviceToHost);
+  for (int i = 0; i < 10; i++) {
+    std::cout << verification[i] << " ";
+  }
+  std::cout << std::endl;
+
+  // print last 10 numbers
+  for (int i = server->merger->current_offset - 10;
+       i < server->merger->current_offset; i++) {
+    std::cout << verification[i] << " ";
+  }
+  std::cout << std::endl;
 
   ucp_mem_unmap(server->context, server->memh);
   free(server->rdma_buffer);
