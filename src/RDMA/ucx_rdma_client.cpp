@@ -205,6 +205,7 @@ void UcxRdmaClient::sender_loop() {
     usleep(1000);
   }
 
+  std::cout << "UcxRdmaClient: Sender loop flushed.\n";
   this->done_flushing = true;
 }
 
