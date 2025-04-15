@@ -41,6 +41,35 @@ typedef struct {
   void *send_buffer;
 } ucx_server_t;
 
+void receiver_thread(int *buffer) {
+  int old_counter = 0;
+
+  while (1) {
+    int counter = buffer[0];
+
+    if (counter != old_counter) {
+      if (counter == -1) {
+        printf("Server: Received end of stream signal\n");
+        while (buffer[old_counter++] != 0) {
+          // TODO: deduplicate data
+          // TODO: memcpy data to send buffer
+          printf("%d ", buffer[old_counter]);
+        }
+        printf("\n");
+        break;
+      } else {
+        printf("Server: Received new data from client %d\n", buffer[0]);
+        // Process the data
+        for (int i = old_counter; i < counter; i++) {
+          // TODO: deduplicate data
+          // TODO: memcpy data to send buffer
+          printf("%d ", buffer[i]);
+        }
+        old_counter = counter;
+      }
+    }
+  }
+}
 static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
   ucp_worker_params_t worker_params;
   ucs_status_t status;
@@ -187,6 +216,14 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     }
   }
 
+  std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
+  std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
+                                                    server->buffer_size +
+                                                    sizeof(int));
+
+  client1_receiver.detach();
+  client2_receiver.detach();
+
   return UCS_OK;
 }
 
@@ -197,36 +234,6 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
   ucp_ep_create(worker, &ep_params, &client_eps[client_count]);
   client_count++;
   printf("Server: client connected\n");
-}
-
-void receiver_thread(int *buffer) {
-  int old_counter = 0;
-
-  while (1) {
-    int counter = buffer[0];
-
-    if (counter != old_counter) {
-      if (counter == -1) {
-        printf("Server: Received end of stream signal\n");
-        while (buffer[old_counter++] != 0) {
-          // TODO: deduplicate data
-          // TODO: memcpy data to send buffer
-          printf("%d ", buffer[old_counter]);
-        }
-        printf("\n");
-        break;
-      } else {
-        printf("Server: Received new data from client %d\n", buffer[0]);
-        // Process the data
-        for (int i = old_counter; i < counter; i++) {
-          // TODO: deduplicate data
-          // TODO: memcpy data to send buffer
-          printf("%d ", buffer[i]);
-        }
-        old_counter = counter;
-      }
-    }
-  }
 }
 
 int start_ucx_server(uint16_t port) {
@@ -278,10 +285,6 @@ int start_ucx_server(uint16_t port) {
   ucp_listener_create(server->worker, &listener_params, &(server->listener));
   printf("Server is listening on port %d\n", PORT);
 
-  std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
-  std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
-                                                    server->buffer_size +
-                                                    sizeof(int));
   while (1) {
     ucp_worker_progress(server->worker);
 
@@ -337,9 +340,6 @@ int start_ucx_server(uint16_t port) {
       //   }
       // }
     }
-
-    client1_receiver.join();
-    client2_receiver.join();
 
     usleep(1000);
   }
