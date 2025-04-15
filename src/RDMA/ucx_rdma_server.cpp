@@ -198,7 +198,7 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
           }
           old_counter++;
         }
-        printf("\n");
+        // printf("\n");
 
         // int tuples_count = 0;
         break;
