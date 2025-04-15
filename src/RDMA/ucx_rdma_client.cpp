@@ -129,18 +129,17 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
       ucp_put_nbx(ep, data, size, remote_addr + current_offset + sizeof(int),
                   rkey, &put_param); // sizeof(int) is because we are using
                                      // first index as a counter
-  ucp_request_param_t inc_param = {};
-  inc_param.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK |
+  ucp_request_param_t counter_param = {};
+  counter_param.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK |
                            UCP_OP_ATTR_FIELD_USER_DATA |
                            UCP_OP_ATTR_FIELD_DATATYPE;
-  inc_param.user_data = (void *)(uintptr_t)(requests.size());
-  inc_param.cb.send = rdma_cb;
-  inc_param.datatype = ucp_dt_make_contig(sizeof(int));
+  counter_param.user_data = (void *)(uintptr_t)(requests.size());
+  counter_param.cb.send = rdma_cb;
+  counter_param.datatype = ucp_dt_make_contig(sizeof(int));
 
-  int *inc_value = new int(1);
-  *inc_value = size / sizeof(int);
-  void *counter_req = ucp_atomic_op_nbx(ep, UCP_ATOMIC_OP_ADD, inc_value, 1,
-                                        remote_addr, rkey, &inc_param);
+  int *counter_value = new int(1);
+  *counter_value = current_offset / sizeof(int);
+  void *counter_req = ucp_put_nbx(ep, counter_value, sizeof(int), remote_addr, rkey, &counter_param);
 
   std::cout << "[RDMA] Writing chunk at offset " << current_offset
             << " | First value: " << data[0] << std::endl;
