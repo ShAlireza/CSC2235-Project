@@ -154,6 +154,8 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
   }
   std::cout << "\n";
 
+  std::cout << "Counter value was " << *counter_value << "\n";
+
 
   std::lock_guard<std::mutex> lock(requests_mutex);
   requests.push(req);
