@@ -180,7 +180,7 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
         // }
         // printf("\n");
         //
-        while (buffer[1 + old_counter] != 0 || buffer[1 + old_counter] != -1) {
+        while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
           int check_value = merger->check_value(buffer[1 + old_counter]);
           if (verbose) {
             printf("%d", 1000 + buffer[1 + old_counter]);
