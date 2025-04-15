@@ -47,7 +47,6 @@ struct ucx_server_t {
 
 struct DistinctMergeDest {
 private:
-  std::map<int, bool> seen_values{};
   int *send_buffer;
 
   int send_buffer_start_index{0};
@@ -59,6 +58,7 @@ private:
   bool finished{false};
 
 public:
+  std::map<int, bool> seen_values{};
   int current_offset{0};
   int *destination_buffer;
 
@@ -506,6 +506,11 @@ int start_ucx_server(uint16_t port) {
     std::cout << verification[i] << " ";
   }
   std::cout << std::endl;
+
+  // Print seen values map from merger
+  for (auto it : server->merger->seen_values) {
+    std::cout << "Key: " << it.first << ", Value: " << it.second << std::endl;
+  }
 
   // print last 10 numbers
   // for (int i = server->merger->current_offset - 10;
