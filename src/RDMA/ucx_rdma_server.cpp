@@ -139,6 +139,7 @@ public:
         current_offset += difference;
 
         this->send_buffer_start_index += difference;
+        difference = std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
       }
 
       if (this->finished) {
