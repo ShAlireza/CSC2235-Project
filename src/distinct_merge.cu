@@ -55,7 +55,7 @@ void DistinctMerge::sender() {
   // TODO: this function check the send buffer and sends data whenever it
   // reached the threshold
 
-  std::cout << "In sender thread" << std::endl;
+  // std::cout << "In sender thread" << std::endl;
   while (true) {
 
     int difference =
@@ -72,8 +72,8 @@ void DistinctMerge::sender() {
         lock.unlock();
 
         if (this->rdma_client != nullptr) {
-          std::cout << "[Sender] Sending chunk of size " << chunk_bytes
-                    << std::endl;
+          // std::cout << "[Sender] Sending chunk of size " << chunk_bytes
+          //           << std::endl;
 
           this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
         } else {
