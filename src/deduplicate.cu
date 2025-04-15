@@ -6,7 +6,6 @@
 
 #define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 2
 #define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
-#define DESTINATION_HOST_IP "172.16.146.10" // For now
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
@@ -14,6 +13,8 @@ int main(int argc, char *argv[]) {
 
   int gpu1 = std::stoi(argv[1]);
   int gpu2 = std::stoi(argv[2]);
+
+  std::string destination_ip = argv[3];
 
   std::cout << std::unitbuf;
 
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
   DistinctMerge merger(recv_buffers, recv_buffer_sizes);
 
   UcxRdmaClient *rdma_client = new UcxRdmaClient(
-      DESTINATION_HOST_IP, DEDUPLICATION_TUPLES_COUNT * 2 * sizeof(int),
+      destination_ip, DEDUPLICATION_TUPLES_COUNT * 2 * sizeof(int),
       DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int));
   merger.set_rdma_client(rdma_client);
   merger_gpu1.cpu_merger = &merger;
