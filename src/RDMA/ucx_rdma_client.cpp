@@ -178,6 +178,7 @@ void UcxRdmaClient::send_finish() {
 
 void UcxRdmaClient::start_sender_thread() {
   sender_thread = std::thread(&UcxRdmaClient::sender_loop, this);
+  sender_thread.detach();
 }
 
 void UcxRdmaClient::sender_loop() {
