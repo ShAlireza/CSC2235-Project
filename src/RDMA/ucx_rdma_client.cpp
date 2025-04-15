@@ -184,11 +184,12 @@ void UcxRdmaClient::sender_loop() {
   while (!finished || !requests.empty()) {
     void *req = nullptr;
     {
-      std::lock_guard<std::mutex> lock(requests_mutex);
+      std::unique_lock<std::mutex> lock(requests_mutex);
       if (!requests.empty()) {
         req = requests.front();
         requests.pop();
       }
+      lock.unlock();
     }
 
     if (req) {
@@ -203,6 +204,8 @@ void UcxRdmaClient::sender_loop() {
     ucp_worker_progress(worker);
     usleep(1000);
   }
+
+  this->done_flushing = true;
 }
 
 void UcxRdmaClient::finish() { finished = true; }

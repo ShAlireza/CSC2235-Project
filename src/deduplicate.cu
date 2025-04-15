@@ -59,8 +59,5 @@ int main(int argc, char *argv[]) {
   // merger.sender_thread.join();
   while (!merger.done_flushing);
 
-  rdma_client->finish();
-  delete rdma_client;
-
   return 0;
 }
