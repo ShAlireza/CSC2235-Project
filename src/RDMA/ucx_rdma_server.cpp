@@ -46,7 +46,7 @@ typedef struct {
 
 void receiver_thread(int *buffer) {
   int old_counter = 0;
-  // printf("Buffer addr: %lu\n", (unsigned long)buffer);
+  printf("Buffer addr: %lu\n", (unsigned long)buffer);
 
   while (1) {
     int counter = buffer[0];
