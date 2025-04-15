@@ -1,8 +1,9 @@
-#include <algorithm>
 #include <arpa/inet.h>
 #include <cstring>
+#include <cuda_runtime.h>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,22 +17,20 @@
 #define PORT 13337
 #define MAX_CLIENTS 2
 
+#define DISTINCT_MERGE_BUFFER_SIZE                                             \
+  1024 * 1024 * 256 // WARN: we should use smalle send buffer size
+#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 256
+#define DISTINCT_MERGE_SEND_CHUNK_SIZE 1024 * 128
+
 static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
 static int client_count = 0;
-
-// #define BUFFER_SIZE 128
-// #define CHUNK_SIZE 16
-
-// Chunk size will actually be receied from the client as an initial message. so
-// we need to replace CHUNK_SIZE with the value received from the client The
-// next line will be a global variable which will be modified by the client
 
 typedef struct {
   uint64_t remote_addr;
   // rkey will follow this header
 } __attribute__((packed)) rdma_info_t;
 
-typedef struct {
+struct ucx_server_t {
   ucp_context_h context;
   ucp_worker_h worker;
   ucp_listener_h listener;
@@ -42,9 +41,102 @@ typedef struct {
   int clients_ready;
   std::map<int, bool> seen_values{};
   void *send_buffer;
-} ucx_server_t;
+};
 
-void receiver_thread(int *buffer) {
+struct DistinctMergeDest {
+private:
+  std::map<int, bool> seen_values{};
+  int *send_buffer;
+
+  int send_buffer_start_index{0};
+  int send_buffer_end_index{0};
+
+  int current_offset{0};
+
+  std::mutex send_buffer_mutex{};
+  std::mutex seen_values_mutex{};
+
+  int *destination_buffer;
+
+  bool finished{false};
+
+public:
+  std::thread sender_thread{};
+  bool done_flushing{false};
+  DistinctMergeDest() = default;
+  DistinctMergeDest(ssize_t send_buffer_size) {
+    cudaMallocHost((void **)&this->send_buffer, send_buffer_size);
+    cudaMalloc((void **)&this->destination_buffer, send_buffer_size);
+  };
+
+  int check_value(int value) {
+    // WARN: We should remove locking later since its a performance bottleneck
+    // (we should use somthing like Intel TBB)
+
+    std::unique_lock<std::mutex> lock(this->seen_values_mutex);
+
+    auto it = seen_values.find(value);
+    if (it != seen_values.end()) {
+      // INFO: We assume that input data are positive integers
+      lock.unlock();
+      return -1;
+    } else {
+      seen_values.emplace(value, true);
+      lock.unlock();
+      return value;
+    }
+  }
+
+  bool stage(int value) {
+    std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+
+    this->send_buffer[this->send_buffer_end_index++] = value;
+
+    lock.unlock();
+
+    return true;
+  }
+
+  void sender() {
+    // Send data to the dest GPU
+    // TODO: this function check the send buffer and sends data whenever it
+    // reached the threshold
+
+    std::cout << "In sender thread" << std::endl;
+    while (true) {
+
+      int difference =
+          std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
+
+      if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+        int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
+        int chunk_bytes = DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int);
+        cudaMemcpy(this->destination_buffer + current_offset, chunk_ptr,
+                   difference * sizeof(int), cudaMemcpyHostToDevice);
+        current_offset += difference;
+      }
+
+      if (this->finished) {
+        std::cout << "Sender thread finished" << std::endl;
+
+        if (difference > 0) {
+          int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
+          int chunk_bytes = difference * sizeof(int);
+          cudaMemcpy(this->destination_buffer + current_offset, chunk_ptr,
+                     difference * sizeof(int), cudaMemcpyHostToDevice);
+
+          current_offset += difference;
+        }
+        this->done_flushing = true;
+        break;
+      }
+    }
+  }
+
+  void finish() { this->finished = true; }
+};
+
+void receiver_thread(int *buffer, DistinctMergeDest *merger) {
   int old_counter = 0;
   // printf("Buffer addr: %lu\n", (unsigned long)buffer);
 
@@ -61,20 +153,22 @@ void receiver_thread(int *buffer) {
         }
         printf("\n");
 
-        // while (buffer[1 + old_counter++] != 0) {
-        //   // TODO: deduplicate data
-        //   // TODO: memcpy data to send buffer
-        //   printf("%d ", buffer[1 + old_counter]);
-        // }
-        printf("\n");
+        while (buffer[1 + old_counter] != 0) {
+          int check_value = merger->check_value(buffer[1 + old_counter++]);
+          if (check_value != -1) {
+            merger->stage(check_value);
+          }
+        }
+        merger->finish();
         break;
       } else {
         printf("Server: Received new data from client %d\n", buffer[0]);
         // Process the data
         for (int i = old_counter; i < counter; i++) {
-          // TODO: deduplicate data
-          // TODO: memcpy data to send buffer
-          // printf("%d ", buffer[1 + i]);
+          int check_value = merger->check_value(buffer[1 + i]);
+          if (check_value != -1) {
+            merger->stage(check_value);
+          }
         }
         printf("\n");
         old_counter = counter;
@@ -236,10 +330,10 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
 
     unsigned long client2_addr = (unsigned long)(server->rdma_buffer) +
                                  server->buffer_size + sizeof(int);
+    DistinctMergeDest *merger = new DistinctMergeDest(2 * server->buffer_size);
 
-
-    std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
-    std::thread client2_receiver(receiver_thread, (int *)client2_addr);
+    std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer, merger);
+    std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger);
 
     client1_receiver.detach();
     client2_receiver.detach();
