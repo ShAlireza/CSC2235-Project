@@ -74,7 +74,7 @@ void receiver_thread(int *buffer) {
         for (int i = old_counter; i < counter; i++) {
           // TODO: deduplicate data
           // TODO: memcpy data to send buffer
-          printf("%d ", buffer[1 + i]);
+          // printf("%d ", buffer[1 + i]);
         }
         printf("\n");
         old_counter = counter;
