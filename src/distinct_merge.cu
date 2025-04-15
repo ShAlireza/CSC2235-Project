@@ -25,19 +25,19 @@ void DistinctMerge::set_rdma_client(UcxRdmaClient *client) {
 int DistinctMerge::check_value(int value) {
   // WARN: We should remove locking later since its a performance bottleneck (we
   // should use somthing like Intel TBB)
-
-  std::unique_lock<std::mutex> lock(this->seen_values_mutex);
-
-  auto it = seen_values.find(value);
-  if (it != seen_values.end()) {
-    // INFO: We assume that input data are positive integers
-    lock.unlock();
-    return -1;
-  } else {
-    seen_values.emplace(value, true);
-    lock.unlock();
-    return value;
-  }
+  // std::unique_lock<std::mutex> lock(this->seen_values_mutex);
+  //
+  // auto it = seen_values.find(value);
+  // if (it != seen_values.end()) {
+  //   // INFO: We assume that input data are positive integers
+  //   lock.unlock();
+  //   return -1;
+  // } else {
+  //   seen_values.emplace(value, true);
+  //   lock.unlock();
+  //   return value;
+  // }
+  return this->seen_values_concurrent.insert(value, true);
 }
 
 bool DistinctMerge::stage(int value) {
