@@ -88,7 +88,7 @@ void DistinctMerge::sender() {
     }
 
     if (this->finished) {
-      std::cout << "Sender thread finished" << std::endl;
+      // std::cout << "Sender thread finished" << std::endl;
 
       if (difference > 0) {
         std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
@@ -97,8 +97,8 @@ void DistinctMerge::sender() {
         lock.unlock();
 
         if (this->rdma_client != nullptr) {
-          std::cout << "[Sender] Sending chunk of size " << chunk_bytes
-                    << std::endl;
+          // std::cout << "[Sender] Sending chunk of size " << chunk_bytes
+          //           << std::endl;
 
           this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
         } else {

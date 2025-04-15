@@ -16,8 +16,8 @@ static void send_cb(void *request, ucs_status_t status, void *user_data) {
 
 static void rdma_cb(void *request, ucs_status_t status, void *user_data) {
   int id = (int)(uintptr_t)user_data;
-  std::cout << "Client: RDMA write " << id
-            << " completed (status = " << ucs_status_string(status) << ")\n";
+  // std::cout << "Client: RDMA write " << id
+  //           << " completed (status = " << ucs_status_string(status) << ")\n";
 }
 
 static ucs_status_t rkey_recv_cb(void *arg, const void *header,
@@ -155,14 +155,14 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
                                   rkey, &counter_param);
 
   // print the chunk data
-  std::cout << "Client: Sending chunk of size " << size << " at address "
-            << remote_addr << "\n";
+  // std::cout << "Client: Sending chunk of size " << size << " at address "
+  //           << remote_addr << "\n";
   // for (size_t i = 0; i < size / sizeof(int); ++i) {
   //     std::cout << data[i] << " ";
   // }
   // std::cout << "\n";
 
-  std::cout << "Counter value was " << *counter_value << "\n";
+  // std::cout << "Counter value was " << *counter_value << "\n";
 
 
   std::lock_guard<std::mutex> lock(requests_mutex);
