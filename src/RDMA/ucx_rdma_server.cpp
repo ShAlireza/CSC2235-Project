@@ -119,14 +119,14 @@ public:
       // std::cout << "Sender thread: checking send buffer" << std::endl;
       // std::cout << "Sender thread: start index: "
       //           << this->send_buffer_start_index << std::endl;
-      // std::cout << "Sender thread: end index: " << this->send_buffer_end_index
+      // std::cout << "Sender thread: end index: " <<
+      // this->send_buffer_end_index
       //           << std::endl;
       int difference =
           std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
-      std::cout << "Sender thread: difference: " << difference << std::endl;
-
       if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+        std::cout << "Sender thread: Threshold reached - difference: " << difference << std::endl;
         int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
         int chunk_bytes = difference * sizeof(int);
 
@@ -139,6 +139,7 @@ public:
       }
 
       if (this->finished) {
+        std::cout << "Sender thread: Sender flushing - difference: " << difference << std::endl;
         std::cout << "Sender thread finished" << std::endl;
 
         if (difference > 0) {
