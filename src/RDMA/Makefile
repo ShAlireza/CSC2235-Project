@@ -3,8 +3,8 @@ UCX_INCLUDE = -I$(UCX_PATH)/include
 UCX_LIB = -L$(UCX_PATH)/lib -lucp -lucs
 
 # Compiler settings
-CC = g++
-CFLAGS = $(UCX_INCLUDE) -pthread
+CC = nvcc
+CFLAGS = $(UCX_INCLUDE)
 LDFLAGS = $(UCX_LIB)
 
 # Targets
