@@ -532,11 +532,11 @@ int start_ucx_server(uint16_t port) {
   // }
 
   // print last 10 numbers
-  for (int i = server->merger->current_offset - 10;
-       i < server->merger->current_offset; i++) {
-    std::cout << verification[i] << " ";
-  }
-  std::cout << std::endl;
+  // for (int i = server->merger->current_offset - 10;
+  //      i < server->merger->current_offset; i++) {
+  //   std::cout << verification[i] << " ";
+  // }
+  // std::cout << std::endl;
 
   // ucp_mem_unmap(server->context, server->memh);
   // free(server->rdma_buffer);
