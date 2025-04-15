@@ -504,12 +504,12 @@ int start_ucx_server(uint16_t port) {
   }
   std::cout << std::endl;
 
-  ucp_mem_unmap(server->context, server->memh);
-  free(server->rdma_buffer);
-  ucp_listener_destroy(server->listener);
-  ucp_worker_destroy(server->worker);
-  ucp_cleanup(server->context);
-  free(server);
+  // ucp_mem_unmap(server->context, server->memh);
+  // free(server->rdma_buffer);
+  // ucp_listener_destroy(server->listener);
+  // ucp_worker_destroy(server->worker);
+  // ucp_cleanup(server->context);
+  // free(server);
 
   return 0;
 }
