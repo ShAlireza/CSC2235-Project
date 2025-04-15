@@ -223,6 +223,9 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
                                                       server->buffer_size +
                                                       sizeof(int));
+    printf("Client1 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer));
+    printf("Client2 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer) +
+                                             server->buffer_size + sizeof(int));
 
     client1_receiver.detach();
     client2_receiver.detach();
