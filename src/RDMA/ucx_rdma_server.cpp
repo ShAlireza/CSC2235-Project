@@ -492,6 +492,8 @@ int start_ucx_server(uint16_t port) {
   cudaMallocHost(&verification, 2 * server->buffer_size);
   cudaMemcpy(verification, server->merger->destination_buffer,
              2 * server->buffer_size, cudaMemcpyDeviceToHost);
+
+  std::cout << "Offset value: " << server->merger->current_offset << std::endl;
   for (int i = 0; i < 10; i++) {
     std::cout << verification[i] << " ";
   }
