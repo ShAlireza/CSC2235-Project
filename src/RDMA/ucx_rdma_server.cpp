@@ -214,15 +214,15 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
                                                       // the counter
       }
     }
+
+    std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
+    std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
+                                                      server->buffer_size +
+                                                      sizeof(int));
+
+    client1_receiver.detach();
+    client2_receiver.detach();
   }
-
-  std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
-  std::thread client2_receiver(receiver_thread, (int *)(server->rdma_buffer) +
-                                                    server->buffer_size +
-                                                    sizeof(int));
-
-  client1_receiver.detach();
-  client2_receiver.detach();
 
   return UCS_OK;
 }
