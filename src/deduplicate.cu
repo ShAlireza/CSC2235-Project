@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
   DistinctMerge merger(recv_buffers, recv_buffer_sizes);
 
   UcxRdmaClient *rdma_client = new UcxRdmaClient(
-      DESTINATION_HOST_IP, DEDUPLICATION_TUPLES_COUNT * 2 * sizeof(int),
+      DESTINATION_HOST_IP, DEDUPLICATION_TUPLES_COUNT * sizeof(int),
       DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int));
   merger.set_rdma_client(rdma_client);
   merger_gpu1.cpu_merger = &merger;
