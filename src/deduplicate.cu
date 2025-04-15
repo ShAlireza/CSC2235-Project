@@ -17,11 +17,11 @@ int main(int argc, char *argv[]) {
   std::cout << "Starting deduplication" << std::endl;
 
   std::cout << "Creating GPU merger 1" << std::endl;
-  DistinctMergeGPU merger_gpu1(0, DEDUPLICATION_TUPLES_COUNT,
+  DistinctMergeGPU merger_gpu1(2, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating GPU merger 2" << std::endl;
-  DistinctMergeGPU merger_gpu2(2, DEDUPLICATION_TUPLES_COUNT,
+  DistinctMergeGPU merger_gpu2(3, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating CPU merger" << std::endl;
