@@ -139,7 +139,7 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
             << " | First value: " << data[0] << std::endl;
   current_offset += size;
 
-  int *counter_value = new int(1);
+  int *counter_value = new int[1];
   *counter_value = current_offset / sizeof(int);
   void *counter_req = ucp_put_nbx(ep, counter_value, sizeof(int), remote_addr,
                                   rkey, &counter_param);
