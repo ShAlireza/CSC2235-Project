@@ -142,8 +142,14 @@ public:
       }
 
       if (this->finished) {
-        // std::cout << "Sender thread: Sender flushing - difference: "
-        //           << difference << std::endl;
+
+        std::cout << "Sender thread: checking send buffer" << std::endl;
+        std::cout << "Sender thread: start index: "
+                  << this->send_buffer_start_index << std::endl;
+        std::cout << "Sender thread: end index: " << this->send_buffer_end_index
+                  << std::endl;
+        std::cout << "Sender thread: Sender flushing - difference: "
+                  << difference << std::endl;
         std::cout << "Sender thread finished" << std::endl;
 
         if (difference > 0) {
@@ -320,10 +326,10 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
   if (server->clients_ready == MAX_CLIENTS) { // NEW
     size_t total_size = 2 * server->buffer_size;
     server->rdma_buffer =
-        calloc(1, total_size +
-                      2 * sizeof(int) + sizeof(int)); // 2 * sizeof(int) is because we are
-                                        // holding a counter per sender to
-                                        // notify server about new data arrival.
+        calloc(1, total_size + 2 * sizeof(int) +
+                      sizeof(int)); // 2 * sizeof(int) is because we are
+                                    // holding a counter per sender to
+                                    // notify server about new data arrival.
     // server->send_buffer = calloc(1, total_size); // NEW
     // Note that we still allocate total size, which might be too much,
     // but we dont know how many duplicates there will be, so its fine
