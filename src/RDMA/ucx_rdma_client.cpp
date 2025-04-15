@@ -131,15 +131,16 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
                                      // first index as a counter
   ucp_request_param_t counter_param = {};
   counter_param.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK |
-                           UCP_OP_ATTR_FIELD_USER_DATA |
-                           UCP_OP_ATTR_FIELD_DATATYPE;
+                               UCP_OP_ATTR_FIELD_USER_DATA |
+                               UCP_OP_ATTR_FIELD_DATATYPE;
   counter_param.user_data = (void *)(uintptr_t)(requests.size());
   counter_param.cb.send = rdma_cb;
   counter_param.datatype = ucp_dt_make_contig(sizeof(int));
 
   int *counter_value = new int(1);
   *counter_value = current_offset / sizeof(int);
-  void *counter_req = ucp_put_nbx(ep, counter_value, sizeof(int), remote_addr, rkey, &counter_param);
+  void *counter_req = ucp_put_nbx(ep, counter_value, sizeof(int), remote_addr,
+                                  rkey, &counter_param);
 
   std::cout << "[RDMA] Writing chunk at offset " << current_offset
             << " | First value: " << data[0] << std::endl;
@@ -169,7 +170,7 @@ void UcxRdmaClient::send_finish() {
   int *data = new int[1];
   *data = -1;
   void *req = ucp_put_nbx(ep, data, sizeof(int), remote_addr, rkey,
-                          &put_param); // sizeof(int) is because we are using
+                          &put_param); // we are using
                                        // first index as a counter
 
   requests.push(req);
