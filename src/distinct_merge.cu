@@ -13,9 +13,9 @@ DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
       receive_buffer_sizes(receive_buffer_sizes) {
 
   this->send_buffer = (int *)malloc(DISTINCT_MERGE_BUFFER_SIZE * sizeof(int));
-  std::thread sender_thread(&DistinctMerge::sender, this);
-  this->sender_thread = std::move(sender_thread);
-  sender_thread.detach();
+
+  this->sender_thread = std::thread(&DistinctMerge::sender, this);
+  this->sender_thread.detach();
 }
 
 void DistinctMerge::set_rdma_client(UcxRdmaClient *client) {
