@@ -205,22 +205,17 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     // Note that we still allocate total size, which might be too much,
     // but we dont know how many duplicates there will be, so its fine
 
-    std::memset(server->rdma_buffer, 0, total_size + 2 * sizeof(int));
-    std::memset(server->send_buffer, 0, total_size);
-
-    std::memset((int *)server->rdma_buffer, 0, sizeof(int));
-    std::memset((int *)server->rdma_buffer + server->buffer_size + sizeof(int), 0,
-           sizeof(int));
+    // std::memset(server->rdma_buffer, 0, total_size + 2 * sizeof(int));
+    // std::memset(server->send_buffer, 0, total_size);
+    //
+    // std::memset((int *)server->rdma_buffer, 0, sizeof(int));
+    // std::memset((int *)server->rdma_buffer + server->buffer_size + sizeof(int), 0,
+    //        sizeof(int));
     ucp_mem_map_params_t mmap_params = {.field_mask =
                                             UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
                                             UCP_MEM_MAP_PARAM_FIELD_LENGTH,
                                         .address = server->rdma_buffer,
                                         .length = total_size + 2 * sizeof(int)};
-
-    for (int i = 0; i < 70; i++) {
-      printf("%d ", ((int *)server->rdma_buffer)[i]);
-    }
-    printf("\n");
 
     ucs_status_t status =
         ucp_mem_map(server->context, &mmap_params, &server->memh);
