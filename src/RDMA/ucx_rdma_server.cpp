@@ -156,7 +156,7 @@ public:
   void finish() { this->finished = true; }
 };
 
-void receiver_thread(int *buffer, DistinctMergeDest *merger) {
+void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose) {
   int old_counter = 0;
   // printf("Buffer addr: %lu\n", (unsigned long)buffer);
 
@@ -174,7 +174,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger) {
         // printf("\n");
         //
         while (buffer[1 + old_counter] != 0) {
-          printf("%d ", 1000 + buffer[1 + old_counter++]);
+          if (verbose)
+            printf("%d ", 1000 + buffer[1 + old_counter++]);
           // int check_value = merger->check_value(buffer[1 + old_counter++]);
           // if (check_value != -1) {
           //   merger->stage(check_value);
@@ -358,8 +359,8 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     server->merger = merger;
 
     std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
-                                 merger);
-    std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger);
+                                 merger, true);
+    std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger, false);
 
     client1_receiver.detach();
     client2_receiver.detach();
