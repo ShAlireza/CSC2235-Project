@@ -99,10 +99,10 @@ public:
 
     // std::cout << value + 4000 << std::endl;
     this->send_buffer[this->send_buffer_end_index++] = value;
-    std::cout << "Sender thread: end index: " << this->send_buffer_end_index
-              << std::endl;
-    std::cout << "Sender thread: start index: " << this->send_buffer_start_index
-              << std::endl;
+    // std::cout << "Sender thread: end index: " << this->send_buffer_end_index
+    //           << std::endl;
+    // std::cout << "Sender thread: start index: " << this->send_buffer_start_index
+    //           << std::endl;
 
     lock.unlock();
 
@@ -127,8 +127,8 @@ public:
           std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
       if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-        std::cout << "Sender thread: Threshold reached - difference: "
-                  << difference << std::endl;
+        // std::cout << "Sender thread: Threshold reached - difference: "
+        //           << difference << std::endl;
         int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
         int chunk_bytes = difference * sizeof(int);
 
@@ -141,8 +141,8 @@ public:
       }
 
       if (this->finished) {
-        std::cout << "Sender thread: Sender flushing - difference: "
-                  << difference << std::endl;
+        // std::cout << "Sender thread: Sender flushing - difference: "
+        //           << difference << std::endl;
         std::cout << "Sender thread finished" << std::endl;
 
         if (difference > 0) {
@@ -462,7 +462,7 @@ int start_ucx_server(uint16_t port) {
       std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
                                    merger, false);
       std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
-                                   true);
+                                   false);
 
       client1_receiver.join();
       client2_receiver.join();
@@ -519,7 +519,7 @@ int start_ucx_server(uint16_t port) {
              2 * server->buffer_size, cudaMemcpyDeviceToHost);
 
   std::cout << "Offset value: " << server->merger->current_offset << std::endl;
-  for (int i = 0; i < server->merger->current_offset; i++) {
+  for (int i = 0; i < 10; i++) {
     std::cout << verification[i] << " ";
   }
   std::cout << std::endl;
@@ -531,11 +531,11 @@ int start_ucx_server(uint16_t port) {
   // }
 
   // print last 10 numbers
-  // for (int i = server->merger->current_offset - 10;
-  //      i < server->merger->current_offset; i++) {
-  //   std::cout << verification[i] << " ";
-  // }
-  // std::cout << std::endl;
+  for (int i = server->merger->current_offset - 10;
+       i < server->merger->current_offset; i++) {
+    std::cout << verification[i] << " ";
+  }
+  std::cout << std::endl;
 
   // ucp_mem_unmap(server->context, server->memh);
   // free(server->rdma_buffer);
