@@ -59,7 +59,7 @@ void receiver_thread(int *buffer) {
         }
         printf("\n");
 
-        for (int i = 32; i < 65; i++) {
+        for (int i = 32; i < 70; i++) {
           printf("%d ", buffer[1 + i]);
         }
         printf("\n");
