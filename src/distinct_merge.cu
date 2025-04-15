@@ -107,6 +107,7 @@ void DistinctMerge::sender() {
         }
       }
       this->rdma_client->send_finish();
+      std::cout << "Sender thread finished sending counter=-1" << std::endl;
 
       break;
     }
