@@ -459,7 +459,7 @@ int start_ucx_server(uint16_t port) {
       server->merger = merger;
 
       std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
-                                   merger, false);
+                                   merger, true);
       std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
                                    false);
 
