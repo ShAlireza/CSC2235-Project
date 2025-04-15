@@ -30,6 +30,7 @@ private:
 
 public:
   std::thread sender_thread{};
+  bool done_flushing{false};
   DistinctMerge() = default;
   DistinctMerge(const std::vector<int *> &receive_buffers,
                 const std::vector<int> &receive_buffer_sizes);

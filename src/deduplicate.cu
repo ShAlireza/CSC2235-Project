@@ -1,5 +1,5 @@
-#include "distinct_merge.h"
 #include "RDMA/ucx_rdma_client.h"
+#include "distinct_merge.h"
 
 #include <iostream>
 #include <thread>
@@ -20,11 +20,9 @@ int main(int argc, char *argv[]) {
   DistinctMergeGPU merger_gpu1(0, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
 
-
   std::cout << "Creating GPU merger 2" << std::endl;
   DistinctMergeGPU merger_gpu2(1, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
-  
 
   std::cout << "Creating CPU merger" << std::endl;
 
@@ -35,13 +33,12 @@ int main(int argc, char *argv[]) {
                                      merger_gpu2.destination_buffer};
   std::vector<int> recv_buffer_sizes = {DEDUPLICATION_TUPLES_COUNT,
                                         DEDUPLICATION_TUPLES_COUNT};
-  
 
   DistinctMerge merger(recv_buffers, recv_buffer_sizes);
 
-  UcxRdmaClient *rdma_client = new UcxRdmaClient(DESTINATION_HOST_IP, 
-                                                  DEDUPLICATION_TUPLES_COUNT * sizeof(int), 
-                                                DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int));
+  UcxRdmaClient *rdma_client = new UcxRdmaClient(
+      DESTINATION_HOST_IP, DEDUPLICATION_TUPLES_COUNT * sizeof(int),
+      DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int));
   merger.set_rdma_client(rdma_client);
   merger_gpu1.cpu_merger = &merger;
   merger_gpu2.cpu_merger = &merger;
@@ -59,7 +56,8 @@ int main(int argc, char *argv[]) {
   merger.finish();
 
   std::cout << "Joining the sender thread and closing it..." << std::endl;
-  merger.sender_thread.join();
+  // merger.sender_thread.join();
+  while (!merger.done_flushing);
 
   rdma_client->finish();
   delete rdma_client;
