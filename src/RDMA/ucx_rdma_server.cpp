@@ -30,6 +30,8 @@ typedef struct {
   // rkey will follow this header
 } __attribute__((packed)) rdma_info_t;
 
+struct DistinctMergeDest;
+
 struct ucx_server_t {
   ucp_context_h context;
   ucp_worker_h worker;
@@ -41,6 +43,7 @@ struct ucx_server_t {
   int clients_ready;
   std::map<int, bool> seen_values{};
   void *send_buffer;
+  DistinctMergeDest *merger{nullptr};
 };
 
 struct DistinctMergeDest {
@@ -62,7 +65,9 @@ private:
 
 public:
   std::thread sender_thread{};
+
   bool done_flushing{false};
+
   DistinctMergeDest() = default;
   DistinctMergeDest(ssize_t send_buffer_size) {
     cudaMallocHost((void **)&this->send_buffer, send_buffer_size);
@@ -159,7 +164,6 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger) {
             merger->stage(check_value);
           }
         }
-        merger->finish();
         break;
       } else {
         printf("Server: Received new data from client %d\n", buffer[0]);
@@ -330,9 +334,12 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
 
     unsigned long client2_addr = (unsigned long)(server->rdma_buffer) +
                                  server->buffer_size + sizeof(int);
-    DistinctMergeDest *merger = new DistinctMergeDest(2 * server->buffer_size);
 
-    std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer, merger);
+    DistinctMergeDest *merger = new DistinctMergeDest(2 * server->buffer_size);
+    server->merger = merger;
+
+    std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
+                                 merger);
     std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger);
 
     client1_receiver.detach();
@@ -354,6 +361,7 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
 int start_ucx_server(uint16_t port) {
 
   ucx_server_t *server = new ucx_server_t();
+
   if (!server) {
     fprintf(stderr, "Failed to allocate ucx_server_t\n");
     return -1;
@@ -429,6 +437,7 @@ int start_ucx_server(uint16_t port) {
          -1)) {
       // sleep(2);
       printf("Both clients finished sending data\n");
+      server->merger->finish();
       break;
       // Now that they are full, we should iterate over the buffer and use the
       // seen values map to check if we've seen the value before. If the value
@@ -459,6 +468,8 @@ int start_ucx_server(uint16_t port) {
 
     usleep(1000);
   }
+
+  while (!server->merger->done_flushing);
 
   ucp_mem_unmap(server->context, server->memh);
   free(server->rdma_buffer);
