@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
                                DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating GPU merger 2" << std::endl;
-  DistinctMergeGPU merger_gpu2(1, DEDUPLICATION_TUPLES_COUNT,
+  DistinctMergeGPU merger_gpu2(2, DEDUPLICATION_TUPLES_COUNT,
                                DEDUPLICATION_CHUNK_SIZE);
 
   std::cout << "Creating CPU merger" << std::endl;
