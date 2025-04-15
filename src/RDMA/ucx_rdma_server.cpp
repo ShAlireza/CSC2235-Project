@@ -50,6 +50,12 @@ void receiver_thread(int *buffer) {
     int counter = buffer[0];
     if (counter == -1)
       std::cout << "Server: Received counter " << counter << std::endl;
+    else {
+      for (int i = 0; i < 32; i++) {
+        printf("%d ", buffer[1 + i]);
+      }
+      printf("\n");
+    }
 
     if (counter != old_counter) {
       if (counter == -1) {
