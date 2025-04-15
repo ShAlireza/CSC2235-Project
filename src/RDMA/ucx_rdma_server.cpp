@@ -119,6 +119,8 @@ public:
         cudaMemcpy(this->destination_buffer + current_offset, chunk_ptr,
                    difference * sizeof(int), cudaMemcpyHostToDevice);
         current_offset += difference;
+
+        this->send_buffer_start_index += difference;
       }
 
       if (this->finished) {
@@ -131,6 +133,7 @@ public:
                      difference * sizeof(int), cudaMemcpyHostToDevice);
 
           current_offset += difference;
+          this->send_buffer_start_index += difference;
         }
         this->done_flushing = true;
         break;
@@ -469,7 +472,8 @@ int start_ucx_server(uint16_t port) {
     usleep(1000);
   }
 
-  while (!server->merger->done_flushing);
+  while (!server->merger->done_flushing)
+    ;
 
   ucp_mem_unmap(server->context, server->memh);
   free(server->rdma_buffer);
