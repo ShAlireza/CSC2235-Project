@@ -13,6 +13,8 @@ public:
                 size_t chunk_size);
   ~UcxRdmaClient();
 
+  bool first_chunk_started{false};
+
   void send_chunk(int *data, size_t size);
   void send_finish();
   void finish(); // Signals the sender thread to flush and exit

@@ -23,7 +23,6 @@ private:
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
 
-
   std::mutex send_buffer_mutex{};
   std::mutex seen_values_mutex{};
 
@@ -57,6 +56,8 @@ public:
   int chunk_size{0};
   int *gpu_data{nullptr};
   int *destination_buffer{nullptr};
+
+  bool first_chunk_started{false};
 
   DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size);
 

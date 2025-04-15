@@ -120,6 +120,16 @@ void UcxRdmaClient::wait_for_rkey() {
 }
 
 void UcxRdmaClient::send_chunk(int *data, size_t size) {
+  if (!this->first_chunk_started) {
+    this->first_chunk_started = true;
+    // Print timestamp in nanoseconds
+    auto now = std::chrono::high_resolution_clock::now();
+    auto duration =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
+          .count();
+    std::cout << "RDMA Client: First chunk started at timestamp " << duration
+            << "\n";
+  }
   ucp_request_param_t put_param = {};
   put_param.op_attr_mask =
       UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_USER_DATA;
@@ -135,8 +145,8 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
   counter_param.user_data = (void *)(uintptr_t)(requests.size());
   counter_param.cb.send = rdma_cb;
 
-  std::cout << "[RDMA] Writing chunk at offset " << current_offset
-            << " | First value: " << data[0] << std::endl;
+  // std::cout << "[RDMA] Writing chunk at offset " << current_offset
+  //           << " | First value: " << data[0] << std::endl;
   current_offset += size;
 
   int *counter_value = new int[1];
@@ -207,6 +217,13 @@ void UcxRdmaClient::sender_loop() {
   }
 
   // std::cout << "UcxRdmaClient: Sender loop flushed.\n";
+  // Print timestamp in nanoseconds
+  auto now = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
+          .count();
+  std::cout << "RDMA Client: Sender loop finished at timestamp " << duration
+            << "\n";
   this->done_flushing = true;
 }
 

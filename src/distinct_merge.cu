@@ -110,7 +110,8 @@ void DistinctMerge::sender() {
       std::cout << "Sender thread finished sending counter=-1" << std::endl;
 
       this->rdma_client->finish();
-      while (!this->rdma_client->done_flushing);
+      while (!this->rdma_client->done_flushing)
+        ;
 
       this->done_flushing = true;
       break;
@@ -126,7 +127,8 @@ DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size)
   CHECK_CUDA(cudaSetDevice(gpu_id));
   CHECK_CUDA(cudaMalloc((void **)&this->gpu_data, tuples_count * sizeof(int)));
   // WARN: generated data shouldn't include 0 (always > 0)
-  generate_data(gpu_id, this->gpu_data, tuples_count, tuples_count * gpu_id + 1);
+  generate_data(gpu_id, this->gpu_data, tuples_count,
+                tuples_count * gpu_id + 1);
 
   // TODO: allocate destination buffer on cpu
   // this->destination_buffer = new int[tuples_count];
@@ -138,23 +140,41 @@ void DistinctMergeGPU::exec(int start_index) {
   // TODO: Run the deduplication on the chunk (do it later, for now we just
   // assume that all tuples have unique values)
 
+  if (!this->first_chunk_started) {
+    this->first_chunk_started = true;
+    // print timestamp in nanoseconds
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                             start_time.time_since_epoch())
+                             .count();
+    std::cout << "GPU: " << this->gpu_id
+              << " - First chunk started at: " << start_time_ns << std::endl;
+  }
+
   // TODO: Send the deduplicated chunk to CPU
   CHECK_CUDA(cudaMemcpy(
       this->destination_buffer + start_index, this->gpu_data + start_index,
       this->chunk_size * sizeof(int), cudaMemcpyDeviceToHost));
 
   // TODO: Check the values and stage them for sending
-  int number_of_inserts = 0;
+  auto start_time = std::chrono::high_resolution_clock::now();
   for (int i = start_index; i < start_index + this->chunk_size; i++) {
     int checked_value =
         this->cpu_merger->check_value(this->destination_buffer[i]);
 
     // Tuple is new so we should stage it into the send buffer
     if (checked_value != -1) {
-      number_of_inserts++;
       this->cpu_merger->stage(checked_value);
     }
   }
+  auto end_time = std::chrono::high_resolution_clock::now();
+
+  auto elapsed_time =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end_time -
+                                                           start_time)
+          .count();
+  std::cout << "GPU: " << this->gpu_id
+            << " - Chunk finished at: " << elapsed_time << std::endl;
   // std::cout << "GPU: " << this->gpu_id
   //           << " - Number of inserts: " << number_of_inserts
   //           << " for chunk starting at index: " << start_index
@@ -177,4 +197,13 @@ void DistinctMergeGPU::start() {
   for (int i = 0; i < threads_count; i++) {
     threads[i].join();
   }
+
+  // Print timestamp in nanoseconds
+  auto time =
+      std::chrono::high_resolution_clock::now();
+  auto time_ns =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(time.time_since_epoch())
+          .count();
+  std::cout << "GPU: " << this->gpu_id
+            << " - Last chunk finished at (includes deduplication): " << time_ns << std::endl;
 }
