@@ -321,7 +321,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     size_t total_size = 2 * server->buffer_size;
     server->rdma_buffer =
         calloc(1, total_size +
-                      2 * sizeof(int)); // 2 * sizeof(int) is because we are
+                      2 * sizeof(int) + sizeof(int)); // 2 * sizeof(int) is because we are
                                         // holding a counter per sender to
                                         // notify server about new data arrival.
     // server->send_buffer = calloc(1, total_size); // NEW
