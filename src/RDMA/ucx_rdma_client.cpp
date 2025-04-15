@@ -126,7 +126,7 @@ void UcxRdmaClient::send_chunk(int *data, size_t size) {
   put_param.user_data = (void *)(uintptr_t)(requests.size());
   put_param.cb.send = rdma_cb;
   void *req =
-      ucp_put_nbx(ep, data, size, remote_addr + current_offset + sizeof(int),
+      ucp_put_nbx(ep, data, size, remote_addr + sizeof(int),
                   rkey, &put_param); // sizeof(int) is because we are using
                                      // first index as a counter
   ucp_request_param_t counter_param = {};
