@@ -112,16 +112,15 @@ public:
     std::cout << "In sender thread" << std::endl;
     while (true) {
 
-      // std::cout << "Sender thread: checking send buffer" << std::endl;
-      // std::cout << "Sender thread: start index: "
-      //           << this->send_buffer_start_index << std::endl;
-      // std::cout << "Sender thread: end index: " <<
-      // this->send_buffer_end_index
-      // << std::endl;
+      std::cout << "Sender thread: checking send buffer" << std::endl;
+      std::cout << "Sender thread: start index: "
+                << this->send_buffer_start_index << std::endl;
+      std::cout << "Sender thread: end index: " << this->send_buffer_end_index
+                << std::endl;
       int difference =
           std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
-      // std::cout << "Sender thread: difference: " << difference << std::endl;
+      std::cout << "Sender thread: difference: " << difference << std::endl;
 
       if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
         int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
