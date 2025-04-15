@@ -46,7 +46,7 @@ typedef struct {
 
 void receiver_thread(int *buffer) {
   int old_counter = 0;
-  printf("Buffer addr: %lu\n", (unsigned long)buffer);
+  // printf("Buffer addr: %lu\n", (unsigned long)buffer);
 
   while (1) {
     int counter = buffer[0];
@@ -243,11 +243,11 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
 
     std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer);
     std::thread client2_receiver(receiver_thread, (int *)client2_addr);
-    printf("Client1 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer));
-    printf("Client2 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer) +
-                                             server->buffer_size + sizeof(int));
-    printf("Client2 buffer offset is %ld\n",
-         server->buffer_size + sizeof(int));
+    // printf("Client1 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer));
+    // printf("Client2 rdma buffer: %lu\n", (unsigned long)(server->rdma_buffer) +
+    //                                          server->buffer_size + sizeof(int));
+    // printf("Client2 buffer offset is %ld\n",
+    //      server->buffer_size + sizeof(int));
 
     client1_receiver.detach();
     client2_receiver.detach();
