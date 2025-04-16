@@ -13,7 +13,7 @@ all: ucx_server ucx_rdma_server ucx_rdma_client test_ucx_rdma_client
 ucx_server: ucx_server.cpp
 	$(CC) -o ucx_server ucx_server.cpp $(CFLAGS) $(LDFLAGS)
 
-ucx_rdma_server: ucx_rdma_server.cpp
+ucx_rdma_server: ucx_rdma_server.cu
 	$(CC) -o ucx_rdma_server ucx_rdma_server.cpp $(CFLAGS) $(LDFLAGS)
 
 ucx_rdma_client: ucx_rdma_client.cpp ucx_rdma_client.h

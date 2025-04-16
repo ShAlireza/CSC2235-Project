@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <cstring>
+#include <cub/cub.cuh>
 #include <cuda_runtime.h>
 #include <getopt.h>
 #include <iostream>
@@ -557,6 +558,48 @@ int start_ucx_server(const cmd_args_t &args) {
       printf("Both clients finished sending data\n");
 
       server->merger->finish();
+
+      if (!global_args.deduplicate) {
+        server->merger->current_offset;
+        server->merger->destination_buffer;
+        int *sorted_array;
+        int *deduplicated_array;
+        unsigned long *deduplicated_array_size;
+
+        void *d_temp_storage = nullptr;
+        size_t temp_storage_bytes = 0;
+
+        cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
+                                       server->merger->destination_buffer,
+                                       sorted_array,
+                                       server->merger->current_offset);
+
+        // Allocate temporary storage
+        cudaMalloc(&d_temp_storage, temp_storage_bytes);
+        // Run sorting operation
+        cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
+                                       server->merger->destination_buffer,
+                                       sorted_array,
+                                       server->merger->current_offset);
+
+        cudaFree(d_temp_storage);
+
+        temp_storage_bytes = 0;
+        cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes,
+                                  sorted_array, deduplicated_array,
+                                  deduplicated_array_size,
+                                  server->merger->current_offset);
+
+        cudaMalloc(&d_temp_storage, temp_storage_bytes);
+        cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes,
+                                  sorted_array, deduplicated_array,
+                                  deduplicated_array_size,
+                                  server->merger->current_offset);
+        server->merger->destination_buffer = deduplicated_array;
+        server->merger->current_offset = deduplicated_array_size[0];
+
+        cudaFree(d_temp_storage);
+      }
 
       break;
     }
