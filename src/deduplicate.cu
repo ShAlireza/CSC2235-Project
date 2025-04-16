@@ -4,7 +4,11 @@
 #include <cstdlib>
 #include <getopt.h>
 #include <iostream>
+#include <sys/poll.h>
+#include <sys/socket.h>
 #include <thread>
+#include <netdb.h>
+#include <unistd.h>
 
 #define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 2
 #define DEDUPLICATION_CHUNK_SIZE 1024 * 1024
@@ -17,6 +21,8 @@ struct cmd_args {
   int gpu1{0};
   int gpu2{1};
   unsigned long send_buffer_threshold{0};
+  std::string peer_ip{""};
+  int peer_port{9090};
 };
 
 // Print help message
@@ -25,13 +31,15 @@ void print_help() {
                "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2>"
             << std::endl;
   std::cout << "Default values:" << std::endl;
-  std::cout << "-t: " << DEDUPLICATION_TUPLES_COUNT << std::endl;
-  std::cout << "-c: " << DEDUPLICATION_CHUNK_SIZE << std::endl;
+  std::cout << "-t: " << DEDUPLICATION_TUPLES_COUNT << " Tuples" << std::endl;
+  std::cout << "-c: " << DEDUPLICATION_CHUNK_SIZE << " Tuples" << std::endl;
   std::cout << "-s: localhost" << std::endl;
   std::cout << "-p: 13337" << std::endl;
-  std::cout << "-1: 0" << std::endl;
-  std::cout << "-2: 1" << std::endl;
-  std::cout << "-b: " << "chunk_size" << std::endl;
+  std::cout << "-1: GPU 0" << std::endl;
+  std::cout << "-2: GPU 1" << std::endl;
+  std::cout << "-b: " << "chunk_size (# Tuples)" << std::endl;
+  std::cout << "-S: <peer_ip>" << std::endl;
+  std::cout << "-P: 9090" << std::endl;
 }
 
 // Parse command line arguments
@@ -40,7 +48,7 @@ cmd_args parse_args(int argc, char *argv[]) {
   cmd_args args{};
 
   char c{0};
-  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:")) != -1) {
+  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:S:P:")) != -1) {
     switch (c) {
     case 't':
       args.tuples_count = std::stoul(optarg);
@@ -63,6 +71,12 @@ cmd_args parse_args(int argc, char *argv[]) {
     case 'b':
       args.send_buffer_threshold = std::stoul(optarg);
       break;
+    case 'S':
+      args.peer_ip = optarg;
+      break;
+    case 'P':
+      args.peer_port = std::stoi(optarg);
+      break;
     default:
       print_help();
       exit(EXIT_FAILURE);
@@ -80,6 +94,84 @@ cmd_args parse_args(int argc, char *argv[]) {
   }
 
   return args;
+}
+
+
+int connect_common(std::string &server, int server_port) {
+  int sockfd = -1;
+  int listenfd = -1;
+  int optval = 1;
+  char service[8];
+  struct addrinfo hints, *res, *t;
+  int ret;
+
+  snprintf(service, sizeof(service), "%u", server_port);
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_flags = (server == "") ? AI_PASSIVE : 0;
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+
+  ret = getaddrinfo(server.c_str(), service, &hints, &res);
+
+  for (t = res; t != NULL; t = t->ai_next) {
+    sockfd = socket(t->ai_family, t->ai_socktype, t->ai_protocol);
+    if (sockfd < 0) {
+      continue;
+    }
+
+    if (server != "") {
+      if (connect(sockfd, t->ai_addr, t->ai_addrlen) == 0) {
+        break;
+      }
+    } else {
+      ret =
+          setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+
+      if (bind(sockfd, t->ai_addr, t->ai_addrlen) == 0) {
+        ret = listen(sockfd, 0);
+
+        /* Accept next connection */
+        fprintf(stdout, "Waiting for connection...\n");
+        listenfd = sockfd;
+        sockfd = accept(listenfd, NULL, NULL);
+        close(listenfd);
+        break;
+      }
+    }
+
+    close(sockfd);
+    sockfd = -1;
+  }
+
+  freeaddrinfo(res);
+  return sockfd;
+}
+
+int barrier(int socketfd) {
+  struct pollfd pfd;
+
+  int dummy = 0;
+  ssize_t result = 0;
+
+  result = send(socketfd, &dummy, sizeof(dummy), 0);
+
+  if (result < 0) {
+    std::cerr << "Error sending data to socket" << std::endl;
+    return result;
+  }
+
+  pfd.fd = socketfd;
+  pfd.events = POLLIN;
+  pfd.revents = 0;
+
+  do {
+    result = poll(&pfd, 1, 1);
+  } while (result == -1);
+
+  result = recv(socketfd, &dummy, sizeof(dummy), MSG_WAITALL);
+
+  return !(result == sizeof(dummy));
+
 }
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
@@ -121,6 +213,11 @@ int main(int argc, char *argv[]) {
   merger.set_rdma_client(rdma_client);
   merger_gpu1.cpu_merger = &merger;
   merger_gpu2.cpu_merger = &merger;
+
+  int socketfd = connect_common(args.peer_ip, args.peer_port);
+
+
+  barrier(socketfd);
 
   std::cout << "Starting GPU 1 merger" << std::endl;
   std::thread t1(start_deduplication, std::ref(merger_gpu1));
