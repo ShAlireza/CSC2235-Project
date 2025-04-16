@@ -679,7 +679,6 @@ int start_ucx_server(const cmd_args_t &args) {
 }
 
 int main(int argc, char **argv) {
-  cmd_args_t args;
-  parse_arguments(argc, argv, args);
-  return start_ucx_server(args);
+  parse_arguments(argc, argv, global_args);
+  return start_ucx_server(global_args);
 }
