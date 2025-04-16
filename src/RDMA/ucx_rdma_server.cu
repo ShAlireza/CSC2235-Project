@@ -619,6 +619,7 @@ int start_ucx_server(const cmd_args_t &args) {
 
     int *deduplicated_array;
     unsigned long *deduplicated_array_size;
+    cudaMalloc(&deduplicated_array_size, sizeof(unsigned long));
 
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
@@ -649,7 +650,7 @@ int start_ucx_server(const cmd_args_t &args) {
     temp_storage_bytes = 0;
     std::cout << "Finding temp storage for Unique" << std::endl;
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
-                              deduplicated_array, deduplicated_array_size,
+                              server->merger->destination_buffer, deduplicated_array_size,
                               server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -657,17 +658,17 @@ int start_ucx_server(const cmd_args_t &args) {
     cudaMalloc(&d_temp_storage, temp_storage_bytes);
     std::cout << "Running Unique on array" << std::endl;
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
-                              deduplicated_array, deduplicated_array_size,
+                              server->merger->destination_buffer, deduplicated_array_size,
                               server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
     std::cout << "Deduplication size: " << deduplicated_array_size[0]
               << std::endl;
-    server->merger->destination_buffer = deduplicated_array;
     server->merger->current_offset = deduplicated_array_size[0];
 
     cudaFree(d_temp_storage);
+    cudaFree(sorted_array);
   }
 
   int *verification;
