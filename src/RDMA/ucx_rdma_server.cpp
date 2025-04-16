@@ -18,18 +18,14 @@ struct cmd_args_t {
   unsigned long distinct_merge_buffer_size{1024 * 1024 * 256};
   unsigned long distinct_merge_buffer_threshold{1024 * 1024 * 2};
   unsigned long port{13337};
-  unsigned long max_clients{2};
 };
 
 void parse_arguments(int argc, char **argv, cmd_args_t &args) {
   int option;
-  while ((option = getopt(argc, argv, "p:m:b:t:")) != -1) {
+  while ((option = getopt(argc, argv, "p:b:t:")) != -1) {
     switch (option) {
     case 'p':
       args.port = strtoul(optarg, nullptr, 10);
-      break;
-    case 'm':
-      args.max_clients = strtoul(optarg, nullptr, 10);
       break;
     case 'b':
       args.distinct_merge_buffer_size = strtoul(optarg, nullptr, 10);
@@ -39,7 +35,7 @@ void parse_arguments(int argc, char **argv, cmd_args_t &args) {
       break;
     default:
       fprintf(stderr,
-              "Usage: %s [-p port] [-m max_clients] [-b buffer_size] [-t "
+              "Usage: %s [-p port] [-b buffer_size] [-t "
               "threshold]\n",
               argv[0]);
       exit(EXIT_FAILURE);
@@ -52,7 +48,7 @@ cmd_args_t global_args;
 
 #define AM_ID 1
 //#define PORT 13337
-//#define MAX_CLIENTS 2
+#define MAX_CLIENTS 2
 
 //#define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size
@@ -172,7 +168,7 @@ public:
       int difference =
           std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
-      if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+      if (difference >= global_args.distinct_merge_buffer_threshold) {
         if (this->first_chunk_started == false) {
           this->first_chunk_started = true;
           // Print timestamp in nanoseconds
