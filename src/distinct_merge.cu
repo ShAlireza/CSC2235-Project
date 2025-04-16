@@ -124,8 +124,10 @@ void DistinctMerge::sender() {
 
 void DistinctMerge::finish() { this->finished = true; }
 
-DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size)
-    : gpu_id(gpu_id), tuples_count(tuples_count), chunk_size(chunk_size) {
+DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size,
+                                   bool deduplicate)
+    : gpu_id(gpu_id), tuples_count(tuples_count), chunk_size(chunk_size),
+      deduplicate(deduplicate) {
   // TODO: init random data on gpu
   CHECK_CUDA(cudaSetDevice(gpu_id));
   CHECK_CUDA(cudaMalloc((void **)&this->gpu_data, tuples_count * sizeof(int)));
@@ -162,12 +164,16 @@ void DistinctMergeGPU::exec(int start_index) {
   // TODO: Check the values and stage them for sending
   auto start_time = std::chrono::high_resolution_clock::now();
   for (int i = start_index; i < start_index + this->chunk_size; i++) {
-    int checked_value =
-        this->cpu_merger->check_value(this->destination_buffer[i]);
+    if (this->deduplicate) {
+      int checked_value =
+          this->cpu_merger->check_value(this->destination_buffer[i]);
 
-    // Tuple is new so we should stage it into the send buffer
-    if (checked_value != -1) {
-      this->cpu_merger->stage(checked_value);
+      // Tuple is new so we should stage it into the send buffer
+      if (checked_value != -1) {
+        this->cpu_merger->stage(checked_value);
+      }
+    } else {
+      this->cpu_merger->stage(this->destination_buffer[i]);
     }
   }
   auto end_time = std::chrono::high_resolution_clock::now();

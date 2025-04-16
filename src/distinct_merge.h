@@ -57,9 +57,11 @@ public:
   int *gpu_data{nullptr};
   int *destination_buffer{nullptr};
 
+  bool deduplicate{false};
+
   bool first_chunk_started{false};
 
-  DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size);
+  DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size, bool deduplicate);
 
   DistinctMerge *cpu_merger;
 

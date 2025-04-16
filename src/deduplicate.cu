@@ -23,12 +23,15 @@ struct cmd_args {
   unsigned long send_buffer_threshold{0};
   std::string peer_ip{""};
   int peer_port{9090};
+  bool deduplicate{false};
 };
 
 // Print help message
 void print_help() {
   std::cout << "Usage: deduplicate -t <tuples_count> -c <chunk_size> "
-               "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2>"
+              "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2> -b <buffer_size> "
+              "-S <peer_ip> -P <peer_port> -d <enables_deduplication>"
+              
             << std::endl;
   std::cout << "Default values:" << std::endl;
   std::cout << "-t: " << DEDUPLICATION_TUPLES_COUNT << " Tuples" << std::endl;
@@ -40,6 +43,7 @@ void print_help() {
   std::cout << "-b: " << "chunk_size (# Tuples)" << std::endl;
   std::cout << "-S: <peer_ip>" << std::endl;
   std::cout << "-P: 9090" << std::endl;
+  std::cout << "-d: enables deduplication" << std::endl;
 }
 
 // Parse command line arguments
@@ -48,7 +52,7 @@ cmd_args parse_args(int argc, char *argv[]) {
   cmd_args args{};
 
   char c{0};
-  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:S:P:")) != -1) {
+  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:S:P:d")) != -1) {
     switch (c) {
     case 't':
       args.tuples_count = std::stoul(optarg);
@@ -76,6 +80,9 @@ cmd_args parse_args(int argc, char *argv[]) {
       break;
     case 'P':
       args.peer_port = std::stoi(optarg);
+      break;
+    case 'd':
+      args.deduplicate = true;
       break;
     default:
       print_help();
