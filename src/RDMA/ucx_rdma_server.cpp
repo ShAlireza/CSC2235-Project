@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <cuda_runtime.h>
+#include <getopt.h>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -12,16 +13,16 @@
 #include <thread>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
-#include <getopt.h>
 
 struct cmd_args_t {
   unsigned long distinct_merge_buffer_threshold{1024 * 1024 * 2};
   unsigned long port{13337};
+  bool deduplicate{false};
 };
 
 void parse_arguments(int argc, char **argv, cmd_args_t &args) {
   int option;
-  while ((option = getopt(argc, argv, "p:t:")) != -1) {
+  while ((option = getopt(argc, argv, "p:t:d")) != -1) {
     switch (option) {
     case 'p':
       args.port = strtoul(optarg, nullptr, 10);
@@ -29,10 +30,11 @@ void parse_arguments(int argc, char **argv, cmd_args_t &args) {
     case 't':
       args.distinct_merge_buffer_threshold = strtoul(optarg, nullptr, 10);
       break;
+    case 'd':
+      args.deduplicate = true;
+      break;
     default:
-      fprintf(stderr,
-              "Usage: %s [-p port] [-t threshold]\n",
-              argv[0]);
+      fprintf(stderr, "Usage: %s [-p port] [-t threshold] [-d]\n", argv[0]);
       exit(EXIT_FAILURE);
     }
   }
@@ -40,24 +42,22 @@ void parse_arguments(int argc, char **argv, cmd_args_t &args) {
 
 cmd_args_t global_args;
 
-
 #define AM_ID 1
-//#define PORT 13337
+// #define PORT 13337
 #define MAX_CLIENTS 2
 
 //#define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size
-//#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 1024 * 2
+// #define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 1024 * 2
 
 static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
 static int client_count = 0;
-//static unsigned long PORT = 13337;
-//static unsigned long MAX_CLIENTS = 2;
-//static unsigned long DISTINCT_MERGE_BUFFER_SIZE =
-    //1024 * 1024 * 256; // WARN: we should use smaller send buffer size
-//static unsigned long DISTINCT_MERGE_BUFFER_THRESHOLD =
-    //1024 * 1024 * 2; // WARN: we should use smaller send buffer size
-
+// static unsigned long PORT = 13337;
+// static unsigned long MAX_CLIENTS = 2;
+// static unsigned long DISTINCT_MERGE_BUFFER_SIZE =
+// 1024 * 1024 * 256; // WARN: we should use smaller send buffer size
+// static unsigned long DISTINCT_MERGE_BUFFER_THRESHOLD =
+// 1024 * 1024 * 2; // WARN: we should use smaller send buffer size
 
 typedef struct {
   uint64_t remote_addr;
@@ -216,7 +216,8 @@ public:
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
                             time_now.time_since_epoch())
                             .count();
-        printf("Sender thread: Flushing data to GPU at timestamp %ld\n", duration);
+        printf("Sender thread: Flushing data to GPU at timestamp %ld\n",
+               duration);
         this->done_flushing = true;
         break;
       }
@@ -247,14 +248,18 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
 
         auto start_time = std::chrono::high_resolution_clock::now();
         while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
-          int check_value = merger->check_value(buffer[1 + old_counter]);
-          if (verbose) {
-            printf("%d", 1000 + buffer[1 + old_counter]);
-            printf("x%d ", check_value);
+          if (global_args.deduplicate) {
+            int check_value = merger->check_value(buffer[1 + old_counter]);
+            if (check_value != -2) {
+              merger->stage(check_value);
+            }
+          } else {
+            merger->stage(buffer[1 + old_counter]);
           }
-          if (check_value != -2) {
-            merger->stage(check_value);
-          }
+          // if (verbose) {
+          //   printf("%d", 1000 + buffer[1 + old_counter]);
+          //   printf("x%d ", check_value);
+          // }
           old_counter++;
         }
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -272,9 +277,13 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
         // Process the data
         auto start_time = std::chrono::high_resolution_clock::now();
         for (int i = old_counter; i < counter; i++) {
-          int check_value = merger->check_value(buffer[1 + i]);
-          if (check_value != -2) {
-            merger->stage(check_value);
+          if (global_args.deduplicate) {
+            int check_value = merger->check_value(buffer[1 + i]);
+            if (check_value != -2) {
+              merger->stage(check_value);
+            }
+          } else {
+            merger->stage(buffer[1 + i]);
           }
         }
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -495,7 +504,8 @@ int start_ucx_server(const cmd_args_t &args) {
   ucp_worker_set_am_recv_handler(server->worker, &am_param);
 
   // Listener
-  struct sockaddr_in addr = {.sin_family = AF_INET, .sin_port = htons(args.port)};
+  struct sockaddr_in addr = {.sin_family = AF_INET,
+                             .sin_port = htons(args.port)};
   addr.sin_addr.s_addr = INADDR_ANY;
   ucp_listener_params_t listener_params = {
       .field_mask = UCP_LISTENER_PARAM_FIELD_SOCK_ADDR |
