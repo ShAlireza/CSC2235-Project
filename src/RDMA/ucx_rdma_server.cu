@@ -644,6 +644,16 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
+
+    int *h_sorted_array;
+    cudaMallocHost(&h_sorted_array, server->buffer_size * 2);
+    cudaMemcpy(h_sorted_array, sorted_array, server->merger->current_offset, cudaMemcpyDeviceToHost);
+
+    for (int i = 0; i <= 100; i++)  {
+      std::cout << h_sorted_array << " ";
+    }
+    std::cout << std::endl;
+
     cudaFree(d_temp_storage);
 
     temp_storage_bytes = 0;
@@ -655,6 +665,7 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
+
     cudaMalloc(&d_temp_storage, temp_storage_bytes);
     std::cout << "Running Unique on array" << std::endl;
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
@@ -664,10 +675,8 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    // host-side storage
     int h_deduplicated_array_size = 0;
 
-    // … after cudaDeviceSynchronize() succeeds …
     CUDA_CHECK(cudaMemcpy(&h_deduplicated_array_size, deduplicated_array_size,
                           sizeof(int), cudaMemcpyDeviceToHost));
 
