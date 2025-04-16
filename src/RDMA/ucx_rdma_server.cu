@@ -568,10 +568,13 @@ int start_ucx_server(const cmd_args_t &args) {
         size_t temp_storage_bytes = 0;
 
         std::cout << "Finding temp storage for SortKeys" << std::endl;
+        cudaGetLastError(); // drops any pending errors
+
         cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
                                        server->merger->destination_buffer,
                                        sorted_array,
                                        server->merger->current_offset);
+        cudaDeviceSynchronize();
 
         // Allocate temporary storage
         std::cout << "Allocating temp storage for Sort" << std::endl;
@@ -582,6 +585,7 @@ int start_ucx_server(const cmd_args_t &args) {
                                        server->merger->destination_buffer,
                                        sorted_array,
                                        server->merger->current_offset);
+        cudaDeviceSynchronize();
 
         cudaFree(d_temp_storage);
 
@@ -591,6 +595,7 @@ int start_ucx_server(const cmd_args_t &args) {
                                   sorted_array, deduplicated_array,
                                   deduplicated_array_size,
                                   server->merger->current_offset);
+        cudaDeviceSynchronize();
 
         cudaMalloc(&d_temp_storage, temp_storage_bytes);
         std::cout << "Running Unique on array" << std::endl;
@@ -598,7 +603,10 @@ int start_ucx_server(const cmd_args_t &args) {
                                   sorted_array, deduplicated_array,
                                   deduplicated_array_size,
                                   server->merger->current_offset);
-        std::cout << "Deduplication size: " << deduplicated_array_size[0] << std::endl;
+        cudaDeviceSynchronize();
+
+        std::cout << "Deduplication size: " << deduplicated_array_size[0]
+                  << std::endl;
         server->merger->destination_buffer = deduplicated_array;
         server->merger->current_offset = deduplicated_array_size[0];
 
