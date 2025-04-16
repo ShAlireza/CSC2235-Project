@@ -627,7 +627,7 @@ int start_ucx_server(const cmd_args_t &args) {
 
     cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
                                    server->merger->destination_buffer,
-                                   sorted_array, 10);
+                                   sorted_array, server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
