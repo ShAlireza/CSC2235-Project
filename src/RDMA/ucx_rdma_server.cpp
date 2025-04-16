@@ -15,28 +15,23 @@
 #include <getopt.h>
 
 struct cmd_args_t {
-  unsigned long distinct_merge_buffer_size{1024 * 1024 * 256};
   unsigned long distinct_merge_buffer_threshold{1024 * 1024 * 2};
   unsigned long port{13337};
 };
 
 void parse_arguments(int argc, char **argv, cmd_args_t &args) {
   int option;
-  while ((option = getopt(argc, argv, "p:b:t:")) != -1) {
+  while ((option = getopt(argc, argv, "p:t:")) != -1) {
     switch (option) {
     case 'p':
       args.port = strtoul(optarg, nullptr, 10);
-      break;
-    case 'b':
-      args.distinct_merge_buffer_size = strtoul(optarg, nullptr, 10);
       break;
     case 't':
       args.distinct_merge_buffer_threshold = strtoul(optarg, nullptr, 10);
       break;
     default:
       fprintf(stderr,
-              "Usage: %s [-p port] [-b buffer_size] [-t "
-              "threshold]\n",
+              "Usage: %s [-p port] [-t threshold]\n",
               argv[0]);
       exit(EXIT_FAILURE);
     }
