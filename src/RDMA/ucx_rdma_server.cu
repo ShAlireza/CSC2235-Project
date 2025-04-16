@@ -636,8 +636,11 @@ int start_ucx_server(const cmd_args_t &args) {
     std::cout << "Running Sort on array" << std::endl;
     std::cout << "Offset: " << server->merger->current_offset
               << " Buffer Size: " << 2 * server->buffer_size << std::endl;
+    int *random_number;
+    cudaMalloc(&random_number, 10);
+    cudaMemset(random_number, 2, 10);
     cub::DeviceRadixSort::SortKeys(
-        d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
+        d_temp_storage, temp_storage_bytes, random_number,
         sorted_array, 10);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
