@@ -8,11 +8,14 @@
 #include <thread>
 
 DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
-                             const std::vector<int> &receive_buffer_sizes)
+                             const std::vector<int> &receive_buffer_sizes,
+                             unsigned long send_buffer_size,
+                             unsigned long send_buffer_threshold)
     : receive_buffers(receive_buffers),
-      receive_buffer_sizes(receive_buffer_sizes) {
+      receive_buffer_sizes(receive_buffer_sizes),
+      send_buffer_threshold(send_buffer_threshold) {
 
-  this->send_buffer = (int *)malloc(DISTINCT_MERGE_BUFFER_SIZE * sizeof(int));
+  this->send_buffer = (int *)malloc(send_buffer_size * sizeof(int));
 
   this->sender_thread = std::thread(&DistinctMerge::sender, this);
   this->sender_thread.detach();
@@ -61,31 +64,31 @@ void DistinctMerge::sender() {
     int difference =
         std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
 
-    if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
-      // std::cout << "[Sender] Threshold reached: " << difference << " values
-      // ready\n";
+    // if (difference >= DISTINCT_MERGE_BUFFER_THRESHOLD) {
+    // std::cout << "[Sender] Threshold reached: " << difference << " values
+    // ready\n";
 
-      while (difference >= DISTINCT_MERGE_SEND_CHUNK_SIZE) {
-        std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
-        int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
-        int chunk_bytes = DISTINCT_MERGE_SEND_CHUNK_SIZE * sizeof(int);
-        lock.unlock();
+    while (difference >= this->send_buffer_threshold) {
+      std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+      int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
+      int chunk_bytes = this->send_buffer_threshold * sizeof(int);
+      lock.unlock();
 
-        if (this->rdma_client != nullptr) {
-          // std::cout << "[Sender] Sending chunk of size " << chunk_bytes
-          //           << std::endl;
+      if (this->rdma_client != nullptr) {
+        // std::cout << "[Sender] Sending chunk of size " << chunk_bytes
+        //           << std::endl;
 
-          this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
-        } else {
-          std::cout << "[Sender] RDMA client is not set, skipping send"
-                    << std::endl;
-        }
-        this->send_buffer_start_index += DISTINCT_MERGE_SEND_CHUNK_SIZE;
-
-        difference = std::abs(this->send_buffer_start_index -
-                              this->send_buffer_end_index);
+        this->rdma_client->send_chunk(chunk_ptr, chunk_bytes);
+      } else {
+        std::cout << "[Sender] RDMA client is not set, skipping send"
+                  << std::endl;
       }
+      this->send_buffer_start_index += this->send_buffer_threshold;
+
+      difference =
+          std::abs(this->send_buffer_start_index - this->send_buffer_end_index);
     }
+    // }
 
     if (this->finished) {
       // std::cout << "Sender thread finished" << std::endl;
@@ -169,10 +172,9 @@ void DistinctMergeGPU::exec(int start_index) {
   }
   auto end_time = std::chrono::high_resolution_clock::now();
 
-  auto elapsed_time =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end_time -
-                                                           start_time)
-          .count();
+  auto elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                          end_time - start_time)
+                          .count();
   std::cout << "GPU: " << this->gpu_id
             << " - Chunk finished at: " << elapsed_time << std::endl;
   // std::cout << "GPU: " << this->gpu_id
@@ -199,11 +201,11 @@ void DistinctMergeGPU::start() {
   }
 
   // Print timestamp in nanoseconds
-  auto time =
-      std::chrono::high_resolution_clock::now();
-  auto time_ns =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(time.time_since_epoch())
-          .count();
+  auto time = std::chrono::high_resolution_clock::now();
+  auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                     time.time_since_epoch())
+                     .count();
   std::cout << "GPU: " << this->gpu_id
-            << " - Last chunk finished at (includes deduplication): " << time_ns << std::endl;
+            << " - Last chunk finished at (includes deduplication): " << time_ns
+            << std::endl;
 }

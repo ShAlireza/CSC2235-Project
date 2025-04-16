@@ -5,18 +5,16 @@
 #include <mutex>
 #include <vector>
 
-#include "RDMA/ucx_rdma_client.h"
 #include "RDMA/cuncurrent_hashmap.h"
-
-#define DISTINCT_MERGE_BUFFER_SIZE                                             \
-  1024 * 1024 * 256 // WARN: we should use smalle send buffer size
-#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 1024
-#define DISTINCT_MERGE_SEND_CHUNK_SIZE 1024 * 512
+#include "RDMA/ucx_rdma_client.h"
 
 struct DistinctMerge {
 private:
   std::map<int, bool> seen_values{};
   ConcurrentHashMap<int, bool> seen_values_concurrent{128};
+  int send_threshold{0};
+
+  unsigned long send_buffer_threshold{1024 * 1024};
 
   int *send_buffer;
   UcxRdmaClient *rdma_client{nullptr};
@@ -36,7 +34,9 @@ public:
   bool done_flushing{false};
   DistinctMerge() = default;
   DistinctMerge(const std::vector<int *> &receive_buffers,
-                const std::vector<int> &receive_buffer_sizes);
+                const std::vector<int> &receive_buffer_sizes,
+                unsigned long send_buffer_size,
+                unsigned long send_buffer_threshold);
 
   int check_value(int value);
 

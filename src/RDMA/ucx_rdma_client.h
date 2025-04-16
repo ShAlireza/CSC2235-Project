@@ -9,7 +9,7 @@
 
 class UcxRdmaClient {
 public:
-  UcxRdmaClient(const std::string &server_ip, size_t buffer_size,
+  UcxRdmaClient(const std::string &server_ip, int server_port, size_t buffer_size,
                 size_t chunk_size);
   ~UcxRdmaClient();
 
@@ -19,7 +19,7 @@ public:
   void send_finish();
   void finish(); // Signals the sender thread to flush and exit
 
-  void init_ucx(const std::string &server_ip);
+  void init_ucx(const std::string &server_ip, int server_port);
   void start_sender_thread();
   void sender_loop();
 
