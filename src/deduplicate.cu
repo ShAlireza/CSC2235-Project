@@ -96,71 +96,98 @@ cmd_args parse_args(int argc, char *argv[]) {
   return args;
 }
 
-int connect_common(std::string &server, int server_port) {
-  int sockfd = -1;
-  int listenfd = -1;
-  int optval = 1;
-  char service[8];
-  struct addrinfo hints, *res, *t;
-  int ret;
+int connect_common(const std::string &peer_ip, int peer_port) {
+    struct addrinfo hints{}, *res = nullptr;
+    int sockfd = -1;
+    int optval = 1;
 
-  snprintf(service, sizeof(service), "%u", server_port);
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_flags = (server == "") ? AI_PASSIVE : 0;
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
+    // prepare the port string
+    std::string port_str = std::to_string(peer_port);
 
-  ret = getaddrinfo(server.c_str(), service, &hints, &res);
+    // both client & server use same hints except AI_PASSIVE for server
+    hints.ai_family   = AF_UNSPEC;        // allow IPv4 or IPv6
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags    = peer_ip.empty()   // if no peer_ip, act as server
+                       ? AI_PASSIVE      // bind to all local interfaces
+                       : 0;
 
-  for (t = res; t != NULL; t = t->ai_next) {
-    sockfd = socket(t->ai_family, t->ai_socktype, t->ai_protocol);
-    if (sockfd < 0) {
-      continue;
+    // getaddrinfo may return multiple candidate addrinfo structs
+    int r = getaddrinfo(
+        peer_ip.empty() ? nullptr : peer_ip.c_str(),
+        port_str.c_str(),
+        &hints,
+        &res
+    );
+    if (r != 0) {
+        std::cerr << "getaddrinfo: " << gai_strerror(r) << "\n";
+        return -1;
     }
 
-    if (server != "") {
-      if (connect(sockfd, t->ai_addr, t->ai_addrlen) == 0) {
-        std::cout << "Connected to server" << std::endl;
-        break;
-      }
-      std::cout << "Failed to connect to server" << std::endl;
-    } else {
-      std::cout << "Binding to address" << std::endl;
-      ret =
-          setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-
-      if (ret < 0) {
-        std::cerr << "Error setting socket options" << std::endl;
-        close(sockfd);
-        sockfd = -1;
-        continue;
-      }
-
-      if (bind(sockfd, t->ai_addr, t->ai_addrlen) == 0) {
-        ret = listen(sockfd, 0);
-
-        if (ret < 0) {
-          std::cerr << "Error listening on socket" << std::endl;
-          close(sockfd);
-          sockfd = -1;
-          continue;
+    for (auto p = res; p; p = p->ai_next) {
+        sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        if (sockfd < 0) {
+            // try next
+            continue;
         }
 
-        /* Accept next connection */
-        fprintf(stdout, "Waiting for connection...\n");
-        listenfd = sockfd;
-        sockfd = accept(listenfd, NULL, NULL);
-        close(listenfd);
-        break;
-      }
+        if (!peer_ip.empty()) {
+            // ----- CLIENT PATH -----
+            if (connect(sockfd, p->ai_addr, p->ai_addrlen) == 0) {
+                std::cout << "Connected to " << peer_ip
+                          << ":" << peer_port << "\n";
+                break;   // success!
+            }
+            std::cerr << "connect: " << strerror(errno) << "\n";
+        }
+        else {
+            // ----- SERVER PATH -----
+            if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+                           &optval, sizeof(optval)) < 0) {
+                std::cerr << "setsockopt: " << strerror(errno) << "\n";
+                close(sockfd);
+                sockfd = -1;
+                continue;
+            }
+            if (bind(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
+                std::cerr << "bind: " << strerror(errno) << "\n";
+                close(sockfd);
+                sockfd = -1;
+                continue;
+            }
+            if (listen(sockfd, /*backlog=*/1) < 0) {
+                std::cerr << "listen: " << strerror(errno) << "\n";
+                close(sockfd);
+                sockfd = -1;
+                continue;
+            }
+
+            std::cout << "Server listening on port " << peer_port << "\n";
+            int client_fd = accept(sockfd, nullptr, nullptr);
+            if (client_fd < 0) {
+                std::cerr << "accept: " << strerror(errno) << "\n";
+                close(sockfd);
+                sockfd = -1;
+                continue;
+            }
+            close(sockfd);   // close the listening socket
+            sockfd = client_fd;
+            std::cout << "Accepted connection\n";
+            break;   // got one client, done
+        }
+
+        // if we get here, something failed — clean up and try next addrinfo
+        close(sockfd);
+        sockfd = -1;
     }
 
-    close(sockfd);
-    sockfd = -1;
-  }
+    freeaddrinfo(res);
 
-  freeaddrinfo(res);
-  return sockfd;
+    if (sockfd < 0) {
+        std::cerr << "Failed to establish "
+                  << (peer_ip.empty() ? "server" : "client")
+                  << " socket\n";
+    }
+    return sockfd;
 }
 
 int barrier(int socketfd) {
