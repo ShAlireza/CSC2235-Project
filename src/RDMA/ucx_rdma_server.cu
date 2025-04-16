@@ -625,14 +625,15 @@ int start_ucx_server(const cmd_args_t &args) {
 
     std::cout << "Finding temp storage for SortKeys" << std::endl;
 
-    cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
-                                   server->merger->destination_buffer,
-                                   sorted_array, server->merger->current_offset);
+    cub::DeviceRadixSort::SortKeys(
+        d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
+        sorted_array, server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
     // Allocate temporary storage
-    std::cout << "Allocating temp storage for Sort: " << temp_storage_bytes << std::endl;
+    std::cout << "Allocating temp storage for Sort: " << temp_storage_bytes
+              << std::endl;
     CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
     // Run sorting operation
     std::cout << "Running Sort on array" << std::endl;
@@ -644,12 +645,19 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
-
     int *h_sorted_array;
     cudaMallocHost(&h_sorted_array, server->buffer_size * 2);
-    cudaMemcpy(h_sorted_array, sorted_array, server->merger->current_offset, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_sorted_array, sorted_array, server->merger->current_offset,
+               cudaMemcpyDeviceToHost);
 
-    for (int i = 0; i <= 100; i++)  {
+    for (int i = -10; i <= 10; i++) {
+      std::cout << h_sorted_array[i] << " ";
+    }
+    std::cout << std::endl;
+
+    for (int i = server->merger->current_offset - 20;
+         i < server->merger->current_offset; i++) {
+
       std::cout << h_sorted_array[i] << " ";
     }
     std::cout << std::endl;
@@ -664,7 +672,6 @@ int start_ucx_server(const cmd_args_t &args) {
                               server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
-
 
     cudaMalloc(&d_temp_storage, temp_storage_bytes);
     std::cout << "Running Unique on array" << std::endl;
