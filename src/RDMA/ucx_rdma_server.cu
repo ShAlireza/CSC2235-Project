@@ -625,7 +625,7 @@ int start_ucx_server(const cmd_args_t &args) {
 
     cub::DeviceRadixSort::SortKeys(
         d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
-        sorted_array, server->merger->current_offset);
+        sorted_array, 10);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -638,7 +638,7 @@ int start_ucx_server(const cmd_args_t &args) {
               << " Buffer Size: " << 2 * server->buffer_size << std::endl;
     cub::DeviceRadixSort::SortKeys(
         d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
-        sorted_array, server->merger->current_offset);
+        sorted_array, 10);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
