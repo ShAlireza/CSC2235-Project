@@ -667,6 +667,8 @@ int start_ucx_server(const cmd_args_t &args) {
     cudaFree(d_temp_storage);
 
     temp_storage_bytes = 0;
+    d_temp_storage = nullptr;
+    
     std::cout << "Finding temp storage for Unique" << std::endl;
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
                               server->merger->destination_buffer,
@@ -676,7 +678,9 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaDeviceSynchronize());
 
 
-    cudaMalloc(&d_temp_storage, temp_storage_bytes);
+    std::cout << "Allocating temp storage for Unique: " << temp_storage_bytes << std::endl;
+    CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+
     std::cout << "Running Unique on array" << std::endl;
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
                               server->merger->destination_buffer,
