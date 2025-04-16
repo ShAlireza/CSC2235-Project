@@ -237,12 +237,12 @@ int main(int argc, char *argv[]) {
   std::cout << "Starting deduplication" << std::endl;
 
   std::cout << "Creating GPU merger 1" << std::endl;
-  DistinctMergeGPU merger_gpu1(args.gpu1, DEDUPLICATION_TUPLES_COUNT,
-                               DEDUPLICATION_CHUNK_SIZE);
+  DistinctMergeGPU merger_gpu1(args.gpu1, args.tuples_count,
+                              args.chunk_size, args.deduplicate);
 
   std::cout << "Creating GPU merger 2" << std::endl;
-  DistinctMergeGPU merger_gpu2(args.gpu2, DEDUPLICATION_TUPLES_COUNT,
-                               DEDUPLICATION_CHUNK_SIZE);
+  DistinctMergeGPU merger_gpu2(args.gpu2, args.tuples_count,
+                               args.chunk_size, args.deduplicate);
 
   std::cout << "Creating CPU merger" << std::endl;
 
@@ -251,8 +251,8 @@ int main(int argc, char *argv[]) {
 
   std::vector<int *> recv_buffers = {merger_gpu1.destination_buffer,
                                      merger_gpu2.destination_buffer};
-  std::vector<int> recv_buffer_sizes = {DEDUPLICATION_TUPLES_COUNT,
-                                        DEDUPLICATION_TUPLES_COUNT};
+  std::vector<unsigned long> recv_buffer_sizes = {args.tuples_count,
+                                        args.tuples_count};
 
   DistinctMerge merger(recv_buffers, recv_buffer_sizes, args.tuples_count * 2,
                        args.send_buffer_threshold);

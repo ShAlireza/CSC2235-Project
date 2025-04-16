@@ -8,7 +8,7 @@
 #include <thread>
 
 DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
-                             const std::vector<int> &receive_buffer_sizes,
+                             const std::vector<unsigned long> &receive_buffer_sizes,
                              unsigned long send_buffer_size,
                              unsigned long send_buffer_threshold)
     : receive_buffers(receive_buffers),

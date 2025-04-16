@@ -25,7 +25,7 @@ private:
   std::mutex seen_values_mutex{};
 
   std::vector<int *> receive_buffers{};
-  std::vector<int> receive_buffer_sizes{};
+  std::vector<unsigned long> receive_buffer_sizes{};
 
   bool finished{false};
 
@@ -34,7 +34,7 @@ public:
   bool done_flushing{false};
   DistinctMerge() = default;
   DistinctMerge(const std::vector<int *> &receive_buffers,
-                const std::vector<int> &receive_buffer_sizes,
+                const std::vector<unsigned long> &receive_buffer_sizes,
                 unsigned long send_buffer_size,
                 unsigned long send_buffer_threshold);
 
