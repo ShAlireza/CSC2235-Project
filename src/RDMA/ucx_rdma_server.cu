@@ -560,8 +560,6 @@ int start_ucx_server(const cmd_args_t &args) {
       server->merger->finish();
 
       if (!global_args.deduplicate) {
-        server->merger->current_offset;
-        server->merger->destination_buffer;
         int *sorted_array;
         int *deduplicated_array;
         unsigned long *deduplicated_array_size;
@@ -569,6 +567,7 @@ int start_ucx_server(const cmd_args_t &args) {
         void *d_temp_storage = nullptr;
         size_t temp_storage_bytes = 0;
 
+        std::cout << "Finding temp storage for SortKeys" << std::endl;
         cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
                                        server->merger->destination_buffer,
                                        sorted_array,

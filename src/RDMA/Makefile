@@ -14,7 +14,7 @@ ucx_server: ucx_server.cpp
 	$(CC) -o ucx_server ucx_server.cpp $(CFLAGS) $(LDFLAGS)
 
 ucx_rdma_server: ucx_rdma_server.cu
-	$(CC) -o ucx_rdma_server ucx_rdma_server.cu $(CFLAGS) $(LDFLAGS)
+	$(CC) -o ucx_rdma_server ucx_rdma_server.cu $(CFLAGS) $(LDFLAGS) -arch=sm_80
 
 ucx_rdma_client: ucx_rdma_client.cpp ucx_rdma_client.h
 	$(CC) -c ucx_rdma_client.cpp $(CFLAGS)
