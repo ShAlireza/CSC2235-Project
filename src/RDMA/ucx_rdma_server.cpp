@@ -12,17 +12,61 @@
 #include <thread>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
+#include <getopt.h>
+
+struct cmd_args_t {
+  unsigned long distinct_merge_buffer_size{1024 * 1024 * 256};
+  unsigned long distinct_merge_buffer_threshold{1024 * 1024 * 2};
+  unsigned long port{13337};
+  unsigned long max_clients{2};
+};
+
+void parse_arguments(int argc, char **argv, cmd_args_t &args) {
+  int option;
+  while ((option = getopt(argc, argv, "p:m:b:t:")) != -1) {
+    switch (option) {
+    case 'p':
+      args.port = strtoul(optarg, nullptr, 10);
+      break;
+    case 'm':
+      args.max_clients = strtoul(optarg, nullptr, 10);
+      break;
+    case 'b':
+      args.distinct_merge_buffer_size = strtoul(optarg, nullptr, 10);
+      break;
+    case 't':
+      args.distinct_merge_buffer_threshold = strtoul(optarg, nullptr, 10);
+      break;
+    default:
+      fprintf(stderr,
+              "Usage: %s [-p port] [-m max_clients] [-b buffer_size] [-t "
+              "threshold]\n",
+              argv[0]);
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+cmd_args_t global_args;
+
 
 #define AM_ID 1
-#define PORT 13337
-#define MAX_CLIENTS 2
+//#define PORT 13337
+//#define MAX_CLIENTS 2
 
-#define DISTINCT_MERGE_BUFFER_SIZE                                             \
+//#define DISTINCT_MERGE_BUFFER_SIZE                                             \
   1024 * 1024 * 256 // WARN: we should use smalle send buffer size
-#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 1024 * 2
+//#define DISTINCT_MERGE_BUFFER_THRESHOLD 1024 * 1024 * 2
 
 static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
 static int client_count = 0;
+//static unsigned long PORT = 13337;
+//static unsigned long MAX_CLIENTS = 2;
+//static unsigned long DISTINCT_MERGE_BUFFER_SIZE =
+    //1024 * 1024 * 256; // WARN: we should use smaller send buffer size
+//static unsigned long DISTINCT_MERGE_BUFFER_THRESHOLD =
+    //1024 * 1024 * 2; // WARN: we should use smaller send buffer size
+
 
 typedef struct {
   uint64_t remote_addr;
@@ -420,7 +464,7 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
   printf("Server: client connected\n");
 }
 
-int start_ucx_server(uint16_t port) {
+int start_ucx_server(const cmd_args_t &args) {
 
   ucx_server_t *server = new ucx_server_t();
 
@@ -460,7 +504,7 @@ int start_ucx_server(uint16_t port) {
   ucp_worker_set_am_recv_handler(server->worker, &am_param);
 
   // Listener
-  struct sockaddr_in addr = {.sin_family = AF_INET, .sin_port = htons(PORT)};
+  struct sockaddr_in addr = {.sin_family = AF_INET, .sin_port = htons(args.port)};
   addr.sin_addr.s_addr = INADDR_ANY;
   ucp_listener_params_t listener_params = {
       .field_mask = UCP_LISTENER_PARAM_FIELD_SOCK_ADDR |
@@ -468,7 +512,7 @@ int start_ucx_server(uint16_t port) {
       .sockaddr = {.addr = (struct sockaddr *)&addr, .addrlen = sizeof(addr)},
       .conn_handler = {.cb = on_connection, .arg = server->worker}};
   ucp_listener_create(server->worker, &listener_params, &(server->listener));
-  printf("Server is listening on port %d\n", PORT);
+  printf("Server is listening on port %d\n", args.port);
 
   while (1) {
     ucp_worker_progress(server->worker);
@@ -591,7 +635,8 @@ int start_ucx_server(uint16_t port) {
   return 0;
 }
 
-int main() {
-  // Start the server
-  start_ucx_server(PORT);
+int main(int argc, char **argv) {
+  cmd_args_t args;
+  parse_arguments(argc, argv, args);
+  return start_ucx_server(args);
 }
