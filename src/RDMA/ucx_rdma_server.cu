@@ -632,8 +632,8 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaDeviceSynchronize());
 
     // Allocate temporary storage
-    std::cout << "Allocating temp storage for Sort" << std::endl;
-    cudaMalloc(&d_temp_storage, temp_storage_bytes);
+    std::cout << "Allocating temp storage for Sort: " << temp_storage_bytes << std::endl;
+    CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
     // Run sorting operation
     std::cout << "Running Sort on array" << std::endl;
     std::cout << "Offset: " << server->merger->current_offset
