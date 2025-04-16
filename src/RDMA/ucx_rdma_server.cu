@@ -650,7 +650,7 @@ int start_ucx_server(const cmd_args_t &args) {
     cudaMemcpy(h_sorted_array, sorted_array, server->merger->current_offset,
                cudaMemcpyDeviceToHost);
 
-    for (int i = -10; i <= 10; i++) {
+    for (int i = 0; i <= 20; i++) {
       std::cout << h_sorted_array[i] << " ";
     }
     std::cout << std::endl;
