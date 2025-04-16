@@ -555,7 +555,7 @@ int start_ucx_server(const cmd_args_t &args) {
       client1_receiver.join();
       client2_receiver.join();
 
-      printf("Both clients finished sending data\n");
+      printf("Server received all data from clients\n");
 
       server->merger->finish();
 
@@ -574,8 +574,10 @@ int start_ucx_server(const cmd_args_t &args) {
                                        server->merger->current_offset);
 
         // Allocate temporary storage
+        std::cout << "Allocating temp storage for Sort" << std::endl;
         cudaMalloc(&d_temp_storage, temp_storage_bytes);
         // Run sorting operation
+        std::cout << "Running Sort on array" << std::endl;
         cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
                                        server->merger->destination_buffer,
                                        sorted_array,
@@ -584,16 +586,19 @@ int start_ucx_server(const cmd_args_t &args) {
         cudaFree(d_temp_storage);
 
         temp_storage_bytes = 0;
+        std::cout << "Finding temp storage for Unique" << std::endl;
         cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes,
                                   sorted_array, deduplicated_array,
                                   deduplicated_array_size,
                                   server->merger->current_offset);
 
         cudaMalloc(&d_temp_storage, temp_storage_bytes);
+        std::cout << "Running Unique on array" << std::endl;
         cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes,
                                   sorted_array, deduplicated_array,
                                   deduplicated_array_size,
                                   server->merger->current_offset);
+        std::cout << "Deduplication size: " << deduplicated_array_size[0] << std::endl;
         server->merger->destination_buffer = deduplicated_array;
         server->merger->current_offset = deduplicated_array_size[0];
 
