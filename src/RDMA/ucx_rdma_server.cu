@@ -617,9 +617,8 @@ int start_ucx_server(const cmd_args_t &args) {
     int *sorted_array;
     cudaMalloc(&sorted_array, 2 * server->buffer_size);
 
-    int *deduplicated_array;
-    unsigned long *deduplicated_array_size;
-    cudaMalloc(&deduplicated_array_size, sizeof(unsigned long));
+    int *deduplicated_array_size;
+    cudaMalloc(&deduplicated_array_size, sizeof(int));
 
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
@@ -666,11 +665,11 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaDeviceSynchronize());
 
     // host-side storage
-    unsigned long h_deduplicated_array_size = 0;
+    int h_deduplicated_array_size = 0;
 
     // … after cudaDeviceSynchronize() succeeds …
-    CUDA_CHECK(cudaMemcpy(&h_deduplicated_array_size, deduplicated_array_size, sizeof(unsigned long),
-                          cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(&h_deduplicated_array_size, deduplicated_array_size,
+                          sizeof(int), cudaMemcpyDeviceToHost));
 
     std::cout << "Deduplication size: " << h_deduplicated_array_size
               << std::endl;
