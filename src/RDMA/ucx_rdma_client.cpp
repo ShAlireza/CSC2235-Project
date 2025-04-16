@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #define AM_ID 1
-#define PORT 13337
 
 static void send_cb(void *request, ucs_status_t status, void *user_data) {
   int id = (int)(uintptr_t)user_data;
@@ -36,10 +35,10 @@ static ucs_status_t rkey_recv_cb(void *arg, const void *header,
   return UCS_OK;
 }
 
-UcxRdmaClient::UcxRdmaClient(const std::string &server_ip, size_t buffer_size,
+UcxRdmaClient::UcxRdmaClient(const std::string &server_ip, int server_port, size_t buffer_size,
                              size_t chunk_size)
     : buffer_size(buffer_size), chunk_size(chunk_size) {
-  init_ucx(server_ip);
+  init_ucx(server_ip, server_port);
   send_metadata();
   wait_for_rkey();
   start_sender_thread();
@@ -60,7 +59,7 @@ Does init_worker,
 registers the AM handler to receive the rkey and remote_addr from the server
 Creates the endpoint to the server
 */
-void UcxRdmaClient::init_ucx(const std::string &server_ip) {
+void UcxRdmaClient::init_ucx(const std::string &server_ip, int server_port) {
   ucp_params_t params = {.field_mask = UCP_PARAM_FIELD_FEATURES,
                          .features = UCP_FEATURE_AM | UCP_FEATURE_RMA};
   ucp_init(&params, nullptr, &context);
@@ -83,7 +82,7 @@ void UcxRdmaClient::init_ucx(const std::string &server_ip) {
   // Create endpoint
   sockaddr_in addr = {};
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(PORT);
+  addr.sin_port = htons(server_port);
   inet_pton(AF_INET, server_ip.c_str(), &addr.sin_addr);
 
   ucp_ep_params_t ep_params = {};

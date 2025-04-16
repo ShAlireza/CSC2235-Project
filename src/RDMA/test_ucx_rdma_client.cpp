@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     size_t buffer_size = DEFAULT_BUFFER_SIZE;
 
     std::cout << "Initializing RDMA client\n";
-    UcxRdmaClient client(server_ip, buffer_size * sizeof(int), chunk_size * sizeof(int));
+    UcxRdmaClient client(server_ip, 13337, buffer_size * sizeof(int), chunk_size * sizeof(int));
 
     int *buffer = generate_random_data(buffer_size);
     if (!buffer) return 1;
