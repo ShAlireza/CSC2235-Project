@@ -15,6 +15,16 @@
 #include <ucp/api/ucp.h>
 #include <unistd.h>
 
+#define CUDA_CHECK(call)                                                       \
+  do {                                                                         \
+    cudaError_t _e = (call);                                                   \
+    if (_e != cudaSuccess) {                                                   \
+      fprintf(stderr, "CUDA_CHECK failure %s:%d: %s\n", __FILE__, __LINE__,    \
+              cudaGetErrorString(_e));                                         \
+      std::exit(1);                                                            \
+    }                                                                          \
+  } while (0)
+
 struct cmd_args_t {
   unsigned long distinct_merge_buffer_threshold{1024 * 1024 * 2};
   unsigned long port{13337};
@@ -568,13 +578,13 @@ int start_ucx_server(const cmd_args_t &args) {
         size_t temp_storage_bytes = 0;
 
         std::cout << "Finding temp storage for SortKeys" << std::endl;
-        cudaGetLastError(); // drops any pending errors
 
         cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
                                        server->merger->destination_buffer,
                                        sorted_array,
                                        server->merger->current_offset);
-        cudaDeviceSynchronize();
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
 
         // Allocate temporary storage
         std::cout << "Allocating temp storage for Sort" << std::endl;
@@ -585,7 +595,8 @@ int start_ucx_server(const cmd_args_t &args) {
                                        server->merger->destination_buffer,
                                        sorted_array,
                                        server->merger->current_offset);
-        cudaDeviceSynchronize();
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
 
         cudaFree(d_temp_storage);
 
@@ -595,7 +606,8 @@ int start_ucx_server(const cmd_args_t &args) {
                                   sorted_array, deduplicated_array,
                                   deduplicated_array_size,
                                   server->merger->current_offset);
-        cudaDeviceSynchronize();
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
 
         cudaMalloc(&d_temp_storage, temp_storage_bytes);
         std::cout << "Running Unique on array" << std::endl;
@@ -603,7 +615,8 @@ int start_ucx_server(const cmd_args_t &args) {
                                   sorted_array, deduplicated_array,
                                   deduplicated_array_size,
                                   server->merger->current_offset);
-        cudaDeviceSynchronize();
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
 
         std::cout << "Deduplication size: " << deduplicated_array_size[0]
                   << std::endl;
