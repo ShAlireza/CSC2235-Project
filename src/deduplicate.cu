@@ -261,6 +261,14 @@ int main(int argc, char *argv[]) {
 
   barrier(socketfd);
 
+  // Print timestamp in nanoseconds
+  auto start = std::chrono::high_resolution_clock::now();
+  auto nano_seconds =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(start.time_since_epoch())
+          .count();
+
+  std::cout << "Starting at " << nano_seconds << " ns" << std::endl;
+
   std::cout << "Starting GPU 1 merger" << std::endl;
   std::thread t1(start_deduplication, std::ref(merger_gpu1));
   std::cout << "Starting GPU 2 merger" << std::endl;
