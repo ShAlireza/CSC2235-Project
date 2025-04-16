@@ -626,9 +626,9 @@ int start_ucx_server(const cmd_args_t &args) {
 
     std::cout << "Finding temp storage for SortKeys" << std::endl;
 
-    cub::DeviceRadixSort::SortKeys(
-        d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
-        sorted_array, 10);
+    cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
+                                   server->merger->destination_buffer,
+                                   sorted_array, 10);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -650,7 +650,8 @@ int start_ucx_server(const cmd_args_t &args) {
     temp_storage_bytes = 0;
     std::cout << "Finding temp storage for Unique" << std::endl;
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
-                              server->merger->destination_buffer, deduplicated_array_size,
+                              server->merger->destination_buffer,
+                              deduplicated_array_size,
                               server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -658,14 +659,22 @@ int start_ucx_server(const cmd_args_t &args) {
     cudaMalloc(&d_temp_storage, temp_storage_bytes);
     std::cout << "Running Unique on array" << std::endl;
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
-                              server->merger->destination_buffer, deduplicated_array_size,
+                              server->merger->destination_buffer,
+                              deduplicated_array_size,
                               server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    std::cout << "Deduplication size: " << deduplicated_array_size[0]
+    // host-side storage
+    unsigned long h_deduplicated_array_size = 0;
+
+    // … after cudaDeviceSynchronize() succeeds …
+    CUDA_CHECK(cudaMemcpy(&h_deduplicated_array_size, deduplicated_array_size, sizeof(unsigned long),
+                          cudaMemcpyDeviceToHost));
+
+    std::cout << "Deduplication size: " << h_deduplicated_array_size
               << std::endl;
-    server->merger->current_offset = deduplicated_array_size[0];
+    server->merger->current_offset = h_deduplicated_array_size;
 
     cudaFree(d_temp_storage);
     cudaFree(sorted_array);
