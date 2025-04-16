@@ -4,10 +4,10 @@
 #include <cstdlib>
 #include <getopt.h>
 #include <iostream>
+#include <netdb.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <thread>
-#include <netdb.h>
 #include <unistd.h>
 
 #define DEDUPLICATION_TUPLES_COUNT 1024 * 1024 * 2
@@ -96,7 +96,6 @@ cmd_args parse_args(int argc, char *argv[]) {
   return args;
 }
 
-
 int connect_common(std::string &server, int server_port) {
   int sockfd = -1;
   int listenfd = -1;
@@ -121,14 +120,31 @@ int connect_common(std::string &server, int server_port) {
 
     if (server != "") {
       if (connect(sockfd, t->ai_addr, t->ai_addrlen) == 0) {
+        std::cout << "Connected to server" << std::endl;
         break;
       }
+      std::cout << "Failed to connect to server" << std::endl;
     } else {
+      std::cout << "Binding to address" << std::endl;
       ret =
           setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
+      if (ret < 0) {
+        std::cerr << "Error setting socket options" << std::endl;
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+
       if (bind(sockfd, t->ai_addr, t->ai_addrlen) == 0) {
         ret = listen(sockfd, 0);
+
+        if (ret < 0) {
+          std::cerr << "Error listening on socket" << std::endl;
+          close(sockfd);
+          sockfd = -1;
+          continue;
+        }
 
         /* Accept next connection */
         fprintf(stdout, "Waiting for connection...\n");
@@ -171,7 +187,6 @@ int barrier(int socketfd) {
   result = recv(socketfd, &dummy, sizeof(dummy), MSG_WAITALL);
 
   return !(result == sizeof(dummy));
-
 }
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
@@ -205,7 +220,8 @@ int main(int argc, char *argv[]) {
   std::vector<int> recv_buffer_sizes = {DEDUPLICATION_TUPLES_COUNT,
                                         DEDUPLICATION_TUPLES_COUNT};
 
-  DistinctMerge merger(recv_buffers, recv_buffer_sizes, args.tuples_count * 2, args.send_buffer_threshold);
+  DistinctMerge merger(recv_buffers, recv_buffer_sizes, args.tuples_count * 2,
+                       args.send_buffer_threshold);
 
   UcxRdmaClient *rdma_client = new UcxRdmaClient(
       args.server_ip, args.server_port, args.tuples_count * 2 * sizeof(int),
@@ -215,7 +231,6 @@ int main(int argc, char *argv[]) {
   merger_gpu2.cpu_merger = &merger;
 
   int socketfd = connect_common(args.peer_ip, args.peer_port);
-
 
   barrier(socketfd);
 
