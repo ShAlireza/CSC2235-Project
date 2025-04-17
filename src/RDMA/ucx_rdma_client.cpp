@@ -32,6 +32,8 @@ static ucs_status_t rkey_recv_cb(void *arg, const void *header,
       client->rkey_received = true;
     }
   }
+
+  std::cout << "Client: Received rkey and remote address from server.\n";
   return UCS_OK;
 }
 

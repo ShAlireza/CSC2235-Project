@@ -267,6 +267,7 @@ int main(int argc, char *argv[]) {
   merger_gpu1.cpu_merger = &merger;
   merger_gpu2.cpu_merger = &merger;
 
+  std::cout << "Received Rkey from server" << std::endl;
   int socketfd = connect_common(args.peer_ip, args.peer_port);
 
   barrier(socketfd);

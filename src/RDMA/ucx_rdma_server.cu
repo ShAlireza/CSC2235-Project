@@ -341,8 +341,8 @@ static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
 }
 
 void send_cb(void *request, ucs_status_t status, void *user_data) {
-  // printf("Client: AM message sent successfully (status = %s)\n",
-  //        ucs_status_string(status));
+  printf("Client: AM message sent successfully (status = %s)\n",
+         ucs_status_string(status));
 }
 
 void handle_request(void *req, const char *label, ucp_worker_h worker) {
