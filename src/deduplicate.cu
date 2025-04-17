@@ -226,6 +226,15 @@ int barrier(int socketfd) {
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
+void wait_for_end(TimeKeeper *timekeeper) {
+  int socketfd = connect_common("", 9999);
+  barrier(socketfd);
+
+  timekeeper->snapshot("end", true);
+
+  close(socketfd);
+}
+
 int main(int argc, char *argv[]) {
   cmd_args args = parse_args(argc, argv);
   // int gpu1 = std::stoi(argv[1]);
@@ -234,6 +243,8 @@ int main(int argc, char *argv[]) {
   // std::string destination_ip = argv[3];
 
   TimeKeeper *timekeeper = new TimeKeeper();
+
+  std::thread end_thread(wait_for_end, timekeeper);
 
   std::cout << std::unitbuf;
 
@@ -277,6 +288,8 @@ int main(int argc, char *argv[]) {
 
   barrier(socketfd);
 
+  close(socketfd);
+
   // Print timestamp in nanoseconds
   // auto start = std::chrono::high_resolution_clock::now();
   // auto nano_seconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -297,8 +310,11 @@ int main(int argc, char *argv[]) {
   merger.finish();
 
   // std::cout << "Joining the sender thread and closing it..." << std::endl;
+
   while (!merger.done_flushing)
     ;
+
+  end_thread.join();
 
   // std::cout << "Closing merger" << std::endl;
   timekeeper->print_history();

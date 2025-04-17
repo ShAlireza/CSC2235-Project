@@ -7,10 +7,13 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <netdb.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/poll.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <thread>
 #include <ucp/api/ucp.h>
@@ -30,11 +33,13 @@ struct cmd_args_t {
   unsigned long distinct_merge_buffer_threshold{1024 * 1024 * 2};
   unsigned long port{13337};
   bool deduplicate{false};
+  std::string client1_ip{"localhost"};
+  std::string client2_ip{"localhost"};
 };
 
 void parse_arguments(int argc, char **argv, cmd_args_t &args) {
   int option;
-  while ((option = getopt(argc, argv, "p:t:d")) != -1) {
+  while ((option = getopt(argc, argv, "p:t:d1:2:")) != -1) {
     switch (option) {
     case 'p':
       args.port = strtoul(optarg, nullptr, 10);
@@ -45,8 +50,17 @@ void parse_arguments(int argc, char **argv, cmd_args_t &args) {
     case 'd':
       args.deduplicate = true;
       break;
+    case '1':
+      args.client1_ip = optarg;
+      break;
+    case '2':
+      args.client2_ip = optarg;
+      break;
     default:
-      fprintf(stderr, "Usage: %s [-p port] [-t threshold] [-d]\n", argv[0]);
+      fprintf(stderr,
+              "Usage: %s [-p port] [-t threshold] [-d] [-1 client1_ip] [-2 "
+              "client2_ip]\n",
+              argv[0]);
       exit(EXIT_FAILURE);
     }
   }
@@ -60,6 +74,32 @@ cmd_args_t global_args;
 
 static ucp_ep_h client_eps[MAX_CLIENTS] = {NULL, NULL};
 static int client_count = 0;
+
+int barrier(int socketfd) {
+  struct pollfd pfd;
+
+  int dummy = 0;
+  ssize_t result = 0;
+
+  result = send(socketfd, &dummy, sizeof(dummy), 0);
+
+  if (result < 0) {
+    std::cerr << "Error sending data to socket" << std::endl;
+    return result;
+  }
+
+  pfd.fd = socketfd;
+  pfd.events = POLLIN;
+  pfd.revents = 0;
+
+  do {
+    result = poll(&pfd, 1, 1);
+  } while (result == -1);
+
+  result = recv(socketfd, &dummy, sizeof(dummy), MSG_WAITALL);
+
+  return !(result == sizeof(dummy));
+}
 
 typedef struct {
   uint64_t remote_addr;
@@ -497,6 +537,93 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
   printf("Server: client connected\n");
 }
 
+int connect_common(const std::string &peer_ip, int peer_port) {
+  struct addrinfo hints{}, *res = nullptr;
+  int sockfd = -1;
+  int optval = 1;
+
+  // prepare the port string
+  std::string port_str = std::to_string(peer_port);
+
+  // both client & server use same hints except AI_PASSIVE for server
+  hints.ai_family = AF_UNSPEC; // allow IPv4 or IPv6
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = peer_ip.empty()  // if no peer_ip, act as server
+                       ? AI_PASSIVE // bind to all local interfaces
+                       : 0;
+
+  // getaddrinfo may return multiple candidate addrinfo structs
+  int r = getaddrinfo(peer_ip.empty() ? nullptr : peer_ip.c_str(),
+                      port_str.c_str(), &hints, &res);
+  if (r != 0) {
+    std::cerr << "getaddrinfo: " << gai_strerror(r) << "\n";
+    return -1;
+  }
+
+  for (auto p = res; p; p = p->ai_next) {
+    sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+    if (sockfd < 0) {
+      // try next
+      continue;
+    }
+
+    if (!peer_ip.empty()) {
+      // ----- CLIENT PATH -----
+      if (connect(sockfd, p->ai_addr, p->ai_addrlen) == 0) {
+        std::cout << "Connected to " << peer_ip << ":" << peer_port << "\n";
+        break; // success!
+      }
+      std::cerr << "connect: " << strerror(errno) << "\n";
+    } else {
+      // ----- SERVER PATH -----
+      if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval,
+                     sizeof(optval)) < 0) {
+        std::cerr << "setsockopt: " << strerror(errno) << "\n";
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+      if (bind(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
+        std::cerr << "bind: " << strerror(errno) << "\n";
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+      if (listen(sockfd, /*backlog=*/1) < 0) {
+        std::cerr << "listen: " << strerror(errno) << "\n";
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+
+      std::cout << "Server listening on port " << peer_port << "\n";
+      int client_fd = accept(sockfd, nullptr, nullptr);
+      if (client_fd < 0) {
+        std::cerr << "accept: " << strerror(errno) << "\n";
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+      close(sockfd); // close the listening socket
+      sockfd = client_fd;
+      std::cout << "Accepted connection\n";
+      break; // got one client, done
+    }
+
+    // if we get here, something failed — clean up and try next addrinfo
+    close(sockfd);
+    sockfd = -1;
+  }
+
+  freeaddrinfo(res);
+
+  if (sockfd < 0) {
+    std::cerr << "Failed to establish "
+              << (peer_ip.empty() ? "server" : "client") << " socket\n";
+  }
+  return sockfd;
+}
+
 int start_ucx_server(const cmd_args_t &args) {
 
   ucx_server_t *server = new ucx_server_t();
@@ -680,9 +807,33 @@ int start_ucx_server(const cmd_args_t &args) {
     server->merger->current_offset = h_deduplicated_array_size;
 
     server->timekeeper->snapshot("end", true);
+    int socket1 = connect_common(global_args.client1_ip, 9999);
+    int socket2 = connect_common(global_args.client2_ip, 9999);
+
+    if (barrier(socket1) != 0) {
+      std::cerr << "Error in barrier" << std::endl;
+    }
+    if (barrier(socket2) != 0) {
+      std::cerr << "Error in barrier" << std::endl;
+    }
+
+    close(socket1);
+    close(socket2);
 
     cudaFree(d_temp_storage);
     cudaFree(sorted_array);
+  } else {
+    int socket1 = connect_common(global_args.client1_ip, 9999);
+    int socket2 = connect_common(global_args.client2_ip, 9999);
+
+    if (barrier(socket1) != 0) {
+      std::cerr << "Error in barrier" << std::endl;
+    }
+    if (barrier(socket2) != 0) {
+      std::cerr << "Error in barrier" << std::endl;
+    }
+    close(socket1);
+    close(socket2);
   }
 
   int *verification;
