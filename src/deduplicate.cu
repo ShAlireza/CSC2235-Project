@@ -235,19 +235,19 @@ int main(int argc, char *argv[]) {
 
   TimeKeeper *timekeeper = new TimeKeeper();
 
-  // std::cout << std::unitbuf;
+  std::cout << std::unitbuf;
 
-  // std::cout << "Starting deduplication" << std::endl;
+  std::cout << "Starting deduplication" << std::endl;
 
-  // std::cout << "Creating GPU merger 1" << std::endl;
+  std::cout << "Creating GPU merger 1" << std::endl;
   DistinctMergeGPU merger_gpu1(args.gpu1, args.tuples_count, args.chunk_size,
                                args.deduplicate, timekeeper, args.randomness);
 
-  // std::cout << "Creating GPU merger 2" << std::endl;
+  std::cout << "Creating GPU merger 2" << std::endl;
   DistinctMergeGPU merger_gpu2(args.gpu2, args.tuples_count, args.chunk_size,
                               args.deduplicate, timekeeper, args.randomness);
 
-  // std::cout << "Creating CPU merger" << std::endl;
+  std::cout << "Creating CPU merger" << std::endl;
 
   std::cout << (merger_gpu1.destination_buffer == nullptr) << std::endl;
   std::cout << (merger_gpu2.destination_buffer == nullptr) << std::endl;
@@ -292,7 +292,6 @@ int main(int argc, char *argv[]) {
   merger.finish();
 
   // std::cout << "Joining the sender thread and closing it..." << std::endl;
-  // merger.sender_thread.join();
   while (!merger.done_flushing)
     ;
 
