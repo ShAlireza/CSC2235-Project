@@ -188,7 +188,7 @@ void DistinctMergeGPU::exec(int start_index) {
   }
 
   this->timekeeper->snapshot("deduplication-end", true);
-  auto end_time = std::chrono::high_resolution_clock::now();
+  // auto end_time = std::chrono::high_resolution_clock::now();
 
   // auto elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
   //                         end_time - start_time)
