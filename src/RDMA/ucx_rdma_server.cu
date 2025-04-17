@@ -540,7 +540,7 @@ int start_ucx_server(const cmd_args_t &args) {
       .sockaddr = {.addr = (struct sockaddr *)&addr, .addrlen = sizeof(addr)},
       .conn_handler = {.cb = on_connection, .arg = server->worker}};
   ucp_listener_create(server->worker, &listener_params, &(server->listener));
-  // printf("Server is listening on port %d\n", args.port);
+  printf("Server is listening on port %ld\n", args.port);
 
   while (1) {
     ucp_worker_progress(server->worker);
