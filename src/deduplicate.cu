@@ -35,7 +35,8 @@ void print_help() {
   std::cout
       << "Usage: deduplicate -t <tuples_count> -c <chunk_size> "
          "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2> -b <buffer_size> "
-        "-S <peer_ip> -P <peer_port> -d <enables_deduplication> -r <randomess> -e <end_port>"
+         "-S <peer_ip> -P <peer_port> -d <enables_deduplication> -r "
+         "<randomess> -e <end_port>"
 
       << std::endl;
   std::cout << "Default values:" << std::endl;
@@ -232,12 +233,49 @@ int barrier(int socketfd) {
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
 void wait_for_end(TimeKeeper *timekeeper, int port) {
-  int socketfd = connect_common("", port);
-  barrier(socketfd);
+  int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (listen_fd < 0) {
+    perror("socket");
+    exit(1);
+  }
 
-  timekeeper->snapshot("end", true);
+  // Allow quick reuse of the port if server restarts
+  int opt = 1;
+  if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    perror("setsockopt");
+    close(listen_fd);
+    exit(1);
+  }
 
-  close(socketfd);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = INADDR_ANY; // listen on all interfaces
+  addr.sin_port = htons(port);
+
+  if (bind(listen_fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
+    perror("bind");
+    close(listen_fd);
+    exit(1);
+  }
+
+  if (listen(listen_fd, /*backlog=*/5) < 0) {
+    perror("listen");
+    close(listen_fd);
+    exit(1);
+  }
+
+  sockaddr_in client_addr;
+  socklen_t client_len = sizeof(client_addr);
+  int client_fd = accept(listen_fd, reinterpret_cast<sockaddr *>(&client_addr),
+                         &client_len);
+  if (client_fd < 0) {
+    perror("accept");
+    exit(1);
+  }
+
+  timekeeper->snapshot("end");
+  close(listen_fd);
+  close(client_fd);
 }
 
 int main(int argc, char *argv[]) {
