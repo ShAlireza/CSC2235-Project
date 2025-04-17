@@ -624,6 +624,29 @@ int connect_common(const std::string &peer_ip, int peer_port) {
   return sockfd;
 }
 
+void send_end_message(std::string ip, int port) {
+  int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock_fd < 0) {
+    perror("socket");
+    return;
+  }
+  sockaddr_in serv_addr{};
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(port);
+  if (inet_pton(AF_INET, ip.c_str(), &serv_addr.sin_addr) <= 0) {
+    std::cerr << "Invalid address/ Address not supported\n";
+    close(sock_fd);
+    return;
+  }
+
+  if (connect(sock_fd, reinterpret_cast<sockaddr *>(&serv_addr),
+              sizeof(serv_addr)) < 0) {
+    perror("connect");
+    close(sock_fd);
+    return;
+  }
+}
+
 int start_ucx_server(const cmd_args_t &args) {
 
   ucx_server_t *server = new ucx_server_t();
@@ -807,33 +830,14 @@ int start_ucx_server(const cmd_args_t &args) {
     server->merger->current_offset = h_deduplicated_array_size;
 
     server->timekeeper->snapshot("end", true);
-    int socket1 = connect_common(global_args.client1_ip, 9999);
-    int socket2 = connect_common(global_args.client2_ip, 9999);
-
-    if (barrier(socket1) != 0) {
-      std::cerr << "Error in barrier" << std::endl;
-    }
-    if (barrier(socket2) != 0) {
-      std::cerr << "Error in barrier" << std::endl;
-    }
-
-    close(socket1);
-    close(socket2);
+    send_end_message(global_args.client1_ip, 9999);
+    send_end_message(global_args.client2_ip, 9999 + 1);
 
     cudaFree(d_temp_storage);
     cudaFree(sorted_array);
   } else {
-    int socket1 = connect_common(global_args.client1_ip, 9999);
-    int socket2 = connect_common(global_args.client2_ip, 9999);
-
-    if (barrier(socket1) != 0) {
-      std::cerr << "Error in barrier" << std::endl;
-    }
-    if (barrier(socket2) != 0) {
-      std::cerr << "Error in barrier" << std::endl;
-    }
-    close(socket1);
-    close(socket2);
+    send_end_message(global_args.client1_ip, 9999);
+    send_end_message(global_args.client2_ip, 9999 + 1);
   }
 
   int *verification;
