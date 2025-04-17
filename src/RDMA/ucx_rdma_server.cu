@@ -739,11 +739,11 @@ int start_ucx_server(const cmd_args_t &args) {
   // }
 
   // print last 10 numbers
-  for (int i = server->merger->current_offset - 10;
-       i < server->merger->current_offset; i++) {
-    std::cout << verification[i] << " ";
-  }
-  std::cout << std::endl;
+  // for (int i = server->merger->current_offset - 10;
+  //      i < server->merger->current_offset; i++) {
+  //   std::cout << verification[i] << " ";
+  // }
+  // std::cout << std::endl;
 
   server->timekeeper->print_history();
 
