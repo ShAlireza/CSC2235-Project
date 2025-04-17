@@ -248,8 +248,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
     if (counter != old_counter) {
       if (counter == -1) {
         timekeeper->snapshot("transfer-end", true);
-        timekeeper->snapshot(
-            "client" + std::to_string(client_id) + "-transfer-end", true);
+        // timekeeper->snapshot(
+        //     "client" + std::to_string(client_id) + "-transfer-end", true);
         // Print timestamp in nanoseconds
         // auto time_now = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -261,8 +261,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
         //
         // auto start_time = std::chrono::high_resolution_clock::now();
         timekeeper->snapshot("t4-start", false);
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
-                             false);
+        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
+        //                      false);
         while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
           if (global_args.deduplicate) {
             int check_value = merger->check_value(buffer[1 + old_counter]);
@@ -279,8 +279,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
           old_counter++;
         }
         timekeeper->snapshot("t4-end", true);
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
-                             true);
+        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
+        //                      true);
         // auto end_time = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
         //                end_time - start_time)
@@ -295,8 +295,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
         // printf("Server: Received new data from client %d\n", buffer[0]);
         // Process the data
         timekeeper->snapshot("t4-start", false);
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
-                             false);
+        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
+        //                      false);
         // auto start_time = std::chrono::high_resolution_clock::now();
         for (int i = old_counter; i < counter; i++) {
           if (global_args.deduplicate) {
@@ -309,8 +309,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
           }
         }
         timekeeper->snapshot("t4-end", true);
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
-                             true);
+        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
+        //                      true);
         // auto end_time = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
         //                     end_time - start_time)
@@ -698,14 +698,14 @@ int start_ucx_server(const cmd_args_t &args) {
 
   server->timekeeper->print_history();
 
-  unsigned long client0_t4{
-      server->timekeeper->get_duration("client0_t4_end", "client0_t4_start")};
-  unsigned long client1_t4{
-      server->timekeeper->get_duration("client1_t4_end", "client1_t4_start")};
+  // unsigned long client0_t4{
+  //     server->timekeeper->get_duration("client0_t4_end", "client0_t4_start")};
+  // unsigned long client1_t4{
+  //     server->timekeeper->get_duration("client1_t4_end", "client1_t4_start")};
   unsigned long t4{server->timekeeper->get_duration("t4-end", "t4-start")};
 
-  std::cout << "Client 0 T4 time: " << client0_t4 << " ns" << std::endl;
-  std::cout << "Client 1 T4 time: " << client1_t4 << " ns" << std::endl;
+  // std::cout << "Client 0 T4 time: " << client0_t4 << " ns" << std::endl;
+  // std::cout << "Client 1 T4 time: " << client1_t4 << " ns" << std::endl;
   std::cout << "T4 time: " << t4 << " ns" << std::endl;
 
   unsigned long t5{server->timekeeper->get_duration("t5-end", "t5-start")};
