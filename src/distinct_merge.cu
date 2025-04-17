@@ -10,10 +10,10 @@
 DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
                              const std::vector<unsigned long> &receive_buffer_sizes,
                              unsigned long send_buffer_size,
-                             unsigned long send_buffer_threshold)
+                             unsigned long send_buffer_threshold, TimeKeeper *timekeeper)
     : receive_buffers(receive_buffers),
       receive_buffer_sizes(receive_buffer_sizes),
-      send_buffer_threshold(send_buffer_threshold) {
+      send_buffer_threshold(send_buffer_threshold), timekeeper(timekeeper) {
 
   this->send_buffer = (int *)malloc(send_buffer_size * sizeof(int));
 
@@ -125,9 +125,9 @@ void DistinctMerge::sender() {
 void DistinctMerge::finish() { this->finished = true; }
 
 DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size,
-                                   bool deduplicate)
+                                   bool deduplicate, TimeKeeper *timekeeper)
     : gpu_id(gpu_id), tuples_count(tuples_count), chunk_size(chunk_size),
-      deduplicate(deduplicate) {
+      deduplicate(deduplicate), timekeeper(timekeeper) {
   // TODO: init random data on gpu
   CHECK_CUDA(cudaSetDevice(gpu_id));
   CHECK_CUDA(cudaMalloc((void **)&this->gpu_data, tuples_count * sizeof(int)));
@@ -148,12 +148,14 @@ void DistinctMergeGPU::exec(int start_index) {
   if (!this->first_chunk_started) {
     this->first_chunk_started = true;
     // print timestamp in nanoseconds
-    auto start_time = std::chrono::high_resolution_clock::now();
-    auto start_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                             start_time.time_since_epoch())
-                             .count();
-    std::cout << "GPU: " << this->gpu_id
-              << " - First chunk started at: " << start_time_ns << std::endl;
+    // auto start_time = std::chrono::high_resolution_clock::now();
+    // auto start_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+    //                          start_time.time_since_epoch())
+    //                          .count();
+
+    this->timekeeper->snapshot("t1-start");
+    // std::cout << "GPU: " << this->gpu_id
+    //           << " - First chunk started at: " << start_time_ns << std::endl;
   }
 
   // TODO: Send the deduplicated chunk to CPU
@@ -162,7 +164,8 @@ void DistinctMergeGPU::exec(int start_index) {
       this->chunk_size * sizeof(int), cudaMemcpyDeviceToHost));
 
   // TODO: Check the values and stage them for sending
-  auto start_time = std::chrono::high_resolution_clock::now();
+  this->timekeeper->snapshot("deduplication-start", false);
+  // auto start_time = std::chrono::high_resolution_clock::now();
   for (int i = start_index; i < start_index + this->chunk_size; i++) {
     if (this->deduplicate) {
       int checked_value =
@@ -176,13 +179,16 @@ void DistinctMergeGPU::exec(int start_index) {
       this->cpu_merger->stage(this->destination_buffer[i]);
     }
   }
+
+  this->timekeeper->snapshot("deduplication-end", true);
   auto end_time = std::chrono::high_resolution_clock::now();
 
-  auto elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                          end_time - start_time)
-                          .count();
-  std::cout << "GPU: " << this->gpu_id
-            << " - Chunk finished at: " << elapsed_time << std::endl;
+  // auto elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+  //                         end_time - start_time)
+  //                         .count();
+  // this->timekeeper->add_time("deduplication", elapsed_time);
+  // std::cout << "GPU: " << this->gpu_id
+            // << " - Chunk finished at: " << elapsed_time << std::endl;
   // std::cout << "GPU: " << this->gpu_id
   //           << " - Number of inserts: " << number_of_inserts
   //           << " for chunk starting at index: " << start_index
@@ -207,11 +213,13 @@ void DistinctMergeGPU::start() {
   }
 
   // Print timestamp in nanoseconds
-  auto time = std::chrono::high_resolution_clock::now();
-  auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                     time.time_since_epoch())
-                     .count();
-  std::cout << "GPU: " << this->gpu_id
-            << " - Last chunk finished at (includes deduplication): " << time_ns
-            << std::endl;
+  this->timekeeper->snapshot("t1-end(Last GPU Chunk Received - Includes deduplication)");
+  // auto time = std::chrono::high_resolution_clock::now();
+  // auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+  //                    time.time_since_epoch())
+  //                    .count();
+  //
+  // std::cout << "GPU: " << this->gpu_id
+  //           << " - Last chunk finished at (includes deduplication): " << time_ns
+  //           << std::endl;
 }

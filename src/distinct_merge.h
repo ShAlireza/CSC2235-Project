@@ -7,12 +7,14 @@
 
 #include "RDMA/cuncurrent_hashmap.h"
 #include "RDMA/ucx_rdma_client.h"
+#include "RDMA/timekeeper.h"
 
 struct DistinctMerge {
 private:
   std::map<int, bool> seen_values{};
   ConcurrentHashMap<int, bool> seen_values_concurrent{128};
   int send_threshold{0};
+  TimeKeeper *timekeeper{nullptr};
 
   unsigned long send_buffer_threshold{1024 * 1024};
 
@@ -36,7 +38,7 @@ public:
   DistinctMerge(const std::vector<int *> &receive_buffers,
                 const std::vector<unsigned long> &receive_buffer_sizes,
                 unsigned long send_buffer_size,
-                unsigned long send_buffer_threshold);
+                unsigned long send_buffer_threshold, TimeKeeper *timekeeper);
 
   int check_value(int value);
 
@@ -57,11 +59,13 @@ public:
   int *gpu_data{nullptr};
   int *destination_buffer{nullptr};
 
+  TimeKeeper *timekeeper{nullptr};
+
   bool deduplicate{false};
 
   bool first_chunk_started{false};
 
-  DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size, bool deduplicate);
+  DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size, bool deduplicate, TimeKeeper *timekeeper);
 
   DistinctMerge *cpu_merger;
 

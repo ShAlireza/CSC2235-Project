@@ -1,3 +1,4 @@
+#include "RDMA/timekeeper.h"
 #include "RDMA/ucx_rdma_client.h"
 #include "distinct_merge.h"
 
@@ -28,11 +29,12 @@ struct cmd_args {
 
 // Print help message
 void print_help() {
-  std::cout << "Usage: deduplicate -t <tuples_count> -c <chunk_size> "
-              "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2> -b <buffer_size> "
-              "-S <peer_ip> -P <peer_port> -d <enables_deduplication>"
-              
-            << std::endl;
+  std::cout
+      << "Usage: deduplicate -t <tuples_count> -c <chunk_size> "
+         "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2> -b <buffer_size> "
+         "-S <peer_ip> -P <peer_port> -d <enables_deduplication>"
+
+      << std::endl;
   std::cout << "Default values:" << std::endl;
   std::cout << "-t: " << DEDUPLICATION_TUPLES_COUNT << " Tuples" << std::endl;
   std::cout << "-c: " << DEDUPLICATION_CHUNK_SIZE << " Tuples" << std::endl;
@@ -104,97 +106,90 @@ cmd_args parse_args(int argc, char *argv[]) {
 }
 
 int connect_common(const std::string &peer_ip, int peer_port) {
-    struct addrinfo hints{}, *res = nullptr;
-    int sockfd = -1;
-    int optval = 1;
+  struct addrinfo hints{}, *res = nullptr;
+  int sockfd = -1;
+  int optval = 1;
 
-    // prepare the port string
-    std::string port_str = std::to_string(peer_port);
+  // prepare the port string
+  std::string port_str = std::to_string(peer_port);
 
-    // both client & server use same hints except AI_PASSIVE for server
-    hints.ai_family   = AF_UNSPEC;        // allow IPv4 or IPv6
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags    = peer_ip.empty()   // if no peer_ip, act as server
-                       ? AI_PASSIVE      // bind to all local interfaces
+  // both client & server use same hints except AI_PASSIVE for server
+  hints.ai_family = AF_UNSPEC; // allow IPv4 or IPv6
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = peer_ip.empty()  // if no peer_ip, act as server
+                       ? AI_PASSIVE // bind to all local interfaces
                        : 0;
 
-    // getaddrinfo may return multiple candidate addrinfo structs
-    int r = getaddrinfo(
-        peer_ip.empty() ? nullptr : peer_ip.c_str(),
-        port_str.c_str(),
-        &hints,
-        &res
-    );
-    if (r != 0) {
-        std::cerr << "getaddrinfo: " << gai_strerror(r) << "\n";
-        return -1;
+  // getaddrinfo may return multiple candidate addrinfo structs
+  int r = getaddrinfo(peer_ip.empty() ? nullptr : peer_ip.c_str(),
+                      port_str.c_str(), &hints, &res);
+  if (r != 0) {
+    std::cerr << "getaddrinfo: " << gai_strerror(r) << "\n";
+    return -1;
+  }
+
+  for (auto p = res; p; p = p->ai_next) {
+    sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+    if (sockfd < 0) {
+      // try next
+      continue;
     }
 
-    for (auto p = res; p; p = p->ai_next) {
-        sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        if (sockfd < 0) {
-            // try next
-            continue;
-        }
-
-        if (!peer_ip.empty()) {
-            // ----- CLIENT PATH -----
-            if (connect(sockfd, p->ai_addr, p->ai_addrlen) == 0) {
-                std::cout << "Connected to " << peer_ip
-                          << ":" << peer_port << "\n";
-                break;   // success!
-            }
-            std::cerr << "connect: " << strerror(errno) << "\n";
-        }
-        else {
-            // ----- SERVER PATH -----
-            if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
-                           &optval, sizeof(optval)) < 0) {
-                std::cerr << "setsockopt: " << strerror(errno) << "\n";
-                close(sockfd);
-                sockfd = -1;
-                continue;
-            }
-            if (bind(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
-                std::cerr << "bind: " << strerror(errno) << "\n";
-                close(sockfd);
-                sockfd = -1;
-                continue;
-            }
-            if (listen(sockfd, /*backlog=*/1) < 0) {
-                std::cerr << "listen: " << strerror(errno) << "\n";
-                close(sockfd);
-                sockfd = -1;
-                continue;
-            }
-
-            std::cout << "Server listening on port " << peer_port << "\n";
-            int client_fd = accept(sockfd, nullptr, nullptr);
-            if (client_fd < 0) {
-                std::cerr << "accept: " << strerror(errno) << "\n";
-                close(sockfd);
-                sockfd = -1;
-                continue;
-            }
-            close(sockfd);   // close the listening socket
-            sockfd = client_fd;
-            std::cout << "Accepted connection\n";
-            break;   // got one client, done
-        }
-
-        // if we get here, something failed — clean up and try next addrinfo
+    if (!peer_ip.empty()) {
+      // ----- CLIENT PATH -----
+      if (connect(sockfd, p->ai_addr, p->ai_addrlen) == 0) {
+        std::cout << "Connected to " << peer_ip << ":" << peer_port << "\n";
+        break; // success!
+      }
+      std::cerr << "connect: " << strerror(errno) << "\n";
+    } else {
+      // ----- SERVER PATH -----
+      if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval,
+                     sizeof(optval)) < 0) {
+        std::cerr << "setsockopt: " << strerror(errno) << "\n";
         close(sockfd);
         sockfd = -1;
+        continue;
+      }
+      if (bind(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
+        std::cerr << "bind: " << strerror(errno) << "\n";
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+      if (listen(sockfd, /*backlog=*/1) < 0) {
+        std::cerr << "listen: " << strerror(errno) << "\n";
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+
+      std::cout << "Server listening on port " << peer_port << "\n";
+      int client_fd = accept(sockfd, nullptr, nullptr);
+      if (client_fd < 0) {
+        std::cerr << "accept: " << strerror(errno) << "\n";
+        close(sockfd);
+        sockfd = -1;
+        continue;
+      }
+      close(sockfd); // close the listening socket
+      sockfd = client_fd;
+      std::cout << "Accepted connection\n";
+      break; // got one client, done
     }
 
-    freeaddrinfo(res);
+    // if we get here, something failed — clean up and try next addrinfo
+    close(sockfd);
+    sockfd = -1;
+  }
 
-    if (sockfd < 0) {
-        std::cerr << "Failed to establish "
-                  << (peer_ip.empty() ? "server" : "client")
-                  << " socket\n";
-    }
-    return sockfd;
+  freeaddrinfo(res);
+
+  if (sockfd < 0) {
+    std::cerr << "Failed to establish "
+              << (peer_ip.empty() ? "server" : "client") << " socket\n";
+  }
+  return sockfd;
 }
 
 int barrier(int socketfd) {
@@ -232,17 +227,19 @@ int main(int argc, char *argv[]) {
   //
   // std::string destination_ip = argv[3];
 
+  TimeKeeper *timekeeper = new TimeKeeper();
+
   std::cout << std::unitbuf;
 
   std::cout << "Starting deduplication" << std::endl;
 
   std::cout << "Creating GPU merger 1" << std::endl;
-  DistinctMergeGPU merger_gpu1(args.gpu1, args.tuples_count,
-                              args.chunk_size, args.deduplicate);
+  DistinctMergeGPU merger_gpu1(args.gpu1, args.tuples_count, args.chunk_size,
+                               args.deduplicate, timekeeper);
 
   std::cout << "Creating GPU merger 2" << std::endl;
-  DistinctMergeGPU merger_gpu2(args.gpu2, args.tuples_count,
-                               args.chunk_size, args.deduplicate);
+  DistinctMergeGPU merger_gpu2(args.gpu2, args.tuples_count, args.chunk_size,
+                               args.deduplicate, timekeeper);
 
   std::cout << "Creating CPU merger" << std::endl;
 
@@ -252,10 +249,10 @@ int main(int argc, char *argv[]) {
   std::vector<int *> recv_buffers = {merger_gpu1.destination_buffer,
                                      merger_gpu2.destination_buffer};
   std::vector<unsigned long> recv_buffer_sizes = {args.tuples_count,
-                                        args.tuples_count};
+                                                  args.tuples_count};
 
   DistinctMerge merger(recv_buffers, recv_buffer_sizes, args.tuples_count * 2,
-                       args.send_buffer_threshold);
+                       args.send_buffer_threshold, timekeeper);
 
   UcxRdmaClient *rdma_client = new UcxRdmaClient(
       args.server_ip, args.server_port, args.tuples_count * 2 * sizeof(int),
@@ -270,9 +267,9 @@ int main(int argc, char *argv[]) {
 
   // Print timestamp in nanoseconds
   auto start = std::chrono::high_resolution_clock::now();
-  auto nano_seconds =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(start.time_since_epoch())
-          .count();
+  auto nano_seconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                          start.time_since_epoch())
+                          .count();
 
   std::cout << "Starting at " << nano_seconds << " ns" << std::endl;
 
@@ -290,6 +287,8 @@ int main(int argc, char *argv[]) {
   // merger.sender_thread.join();
   while (!merger.done_flushing)
     ;
+
+  timekeeper->print_history();
 
   return 0;
 }
