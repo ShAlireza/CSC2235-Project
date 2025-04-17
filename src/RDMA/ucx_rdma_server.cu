@@ -486,7 +486,7 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
                                .conn_request = conn_request};
   ucp_ep_create(worker, &ep_params, &client_eps[client_count]);
   client_count++;
-  // printf("Server: client connected\n");
+  printf("Server: client connected\n");
 }
 
 int start_ucx_server(const cmd_args_t &args) {
