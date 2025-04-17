@@ -411,7 +411,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     fprintf(stderr, "Error: server is NULL!\n");
     return UCS_ERR_INVALID_PARAM;
   }
-  // printf("Server received AM: %s\n", (char *)data);
+  printf("Server received AM: %s\n", (char *)data);
 
   char *token = strtok((char *)data, " ");
   if (token != NULL) {
@@ -424,8 +424,8 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
 
   server->clients_ready++; // NEW
 
-  // printf("Server: Received chunk size %ld and buffer size %ld\n",
-         // server->chunk_size, server->buffer_size);
+  printf("Server: Received chunk size %ld and buffer size %ld\n",
+         server->chunk_size, server->buffer_size);
 
   // Only allocate the buffer if both clients are ready NEW
 
@@ -462,7 +462,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     }
     // printf("Server RDMA buffer allocated at %p\n", server->rdma_buffer);
     // printf("Server RDMA buffer size is %ld\n", total_size);
-    // printf("Server: Both clients are ready, buffer allocated\n");
+    printf("Server: Both clients are ready, buffer allocated\n");
 
     // Now send the rkey back to the clients
     for (int i = 0; i < MAX_CLIENTS; i++) { // NEW
