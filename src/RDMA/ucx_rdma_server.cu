@@ -213,8 +213,12 @@ public:
           int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
           int chunk_bytes = difference * sizeof(int);
 
+          // start time
           cudaMemcpy(this->destination_buffer + current_offset, chunk_ptr,
                      difference * sizeof(int), cudaMemcpyHostToDevice);
+          // end time
+          // duration = end - start
+          // total += duration
 
           current_offset += difference;
           this->send_buffer_start_index += difference;
@@ -261,7 +265,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
         //
         // auto start_time = std::chrono::high_resolution_clock::now();
         timekeeper->snapshot("t4-start", false);
-        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
+        // timekeeper->snapshot("client" + std::to_string(client_id) +
+        // "-t4-start",
         //                      false);
         while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
           if (global_args.deduplicate) {
@@ -279,7 +284,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
           old_counter++;
         }
         timekeeper->snapshot("t4-end", true);
-        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
+        // timekeeper->snapshot("client" + std::to_string(client_id) +
+        // "-t4-end",
         //                      true);
         // auto end_time = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -295,7 +301,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
         // printf("Server: Received new data from client %d\n", buffer[0]);
         // Process the data
         timekeeper->snapshot("t4-start", false);
-        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
+        // timekeeper->snapshot("client" + std::to_string(client_id) +
+        // "-t4-start",
         //                      false);
         // auto start_time = std::chrono::high_resolution_clock::now();
         for (int i = old_counter; i < counter; i++) {
@@ -309,7 +316,8 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
           }
         }
         timekeeper->snapshot("t4-end", true);
-        // timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
+        // timekeeper->snapshot("client" + std::to_string(client_id) +
+        // "-t4-end",
         //                      true);
         // auto end_time = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -574,6 +582,8 @@ int start_ucx_server(const cmd_args_t &args) {
   while (!server->merger->done_flushing)
     ;
 
+  server->timekeeper->snapshot("end", true);
+
   if (!global_args.deduplicate) {
     int *sorted_array;
     cudaMalloc(&sorted_array, server->merger->current_offset * sizeof(int));
@@ -656,7 +666,8 @@ int start_ucx_server(const cmd_args_t &args) {
 
     // total_time_ns += duration;
 
-    // std::cout << "Total time for sorting and deduplication on destination GPU: "
+    // std::cout << "Total time for sorting and deduplication on destination
+    // GPU: "
     //           << total_time_ns << " ns" << std::endl;
 
     int h_deduplicated_array_size = 0;
@@ -667,6 +678,8 @@ int start_ucx_server(const cmd_args_t &args) {
     // std::cout << "Deduplication size: " << h_deduplicated_array_size
     //           << std::endl;
     server->merger->current_offset = h_deduplicated_array_size;
+
+    server->timekeeper->snapshot("end", true);
 
     cudaFree(d_temp_storage);
     cudaFree(sorted_array);
@@ -699,17 +712,23 @@ int start_ucx_server(const cmd_args_t &args) {
   server->timekeeper->print_history();
 
   // unsigned long client0_t4{
-  //     server->timekeeper->get_duration("client0_t4_end", "client0_t4_start")};
+  //     server->timekeeper->get_duration("client0_t4_end",
+  //     "client0_t4_start")};
   // unsigned long client1_t4{
-  //     server->timekeeper->get_duration("client1_t4_end", "client1_t4_start")};
+  //     server->timekeeper->get_duration("client1_t4_end",
+  //     "client1_t4_start")};
   unsigned long t4{server->timekeeper->get_duration("t4-end", "t4-start")};
+  unsigned long t5{server->timekeeper->get_duration("t5-end", "t5-start")};
 
   // std::cout << "Client 0 T4 time: " << client0_t4 << " ns" << std::endl;
   // std::cout << "Client 1 T4 time: " << client1_t4 << " ns" << std::endl;
-  std::cout << "T4 time: " << t4 << " ns" << std::endl;
+  std::cout << "t4: " << t4 << " ns" << std::endl;
 
-  unsigned long t5{server->timekeeper->get_duration("t5-end", "t5-start")};
-  std::cout << "T5 time: " << t5 << " ns" << std::endl;
+  std::cout << "t5: " << t5 << " ns" << std::endl;
+
+  std::cout << "t4-t5: "
+            << server->timekeeper->get_duration("t5-end", "t4-start") << " ns"
+            << std::endl;
 
   if (!global_args.deduplicate) {
     unsigned long sort_time{
@@ -719,7 +738,7 @@ int start_ucx_server(const cmd_args_t &args) {
 
     std::cout << "Sort time: " << sort_time << " ns" << std::endl;
     std::cout << "Unique time: " << unique_time << " ns" << std::endl;
-    std::cout << "T6 time: " << sort_time + unique_time << " ns" << std::endl;
+    std::cout << "t6: " << sort_time + unique_time << " ns" << std::endl;
   }
 
   // ucp_mem_unmap(server->context, server->memh);
