@@ -133,8 +133,8 @@ DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size,
   CHECK_CUDA(cudaSetDevice(gpu_id));
   CHECK_CUDA(cudaMalloc((void **)&this->gpu_data, tuples_count * sizeof(int)));
   // WARN: generated data shouldn't include 0 (always > 0)
-  generate_data(gpu_id, this->gpu_data, tuples_count,
-                tuples_count * gpu_id + 1, 1);
+  generate_data(gpu_id, this->gpu_data, tuples_count, 1.0,
+                tuples_count * gpu_id + 1);
 
   // TODO: allocate destination buffer on cpu
   // this->destination_buffer = new int[tuples_count];
