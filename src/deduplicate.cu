@@ -27,6 +27,7 @@ struct cmd_args {
   int peer_port{9090};
   bool deduplicate{false};
   float randomness{1.0f};
+  int end_port{9999};
 };
 
 // Print help message
@@ -34,7 +35,7 @@ void print_help() {
   std::cout
       << "Usage: deduplicate -t <tuples_count> -c <chunk_size> "
          "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2> -b <buffer_size> "
-         "-S <peer_ip> -P <peer_port> -d <enables_deduplication> -r <randomess>"
+        "-S <peer_ip> -P <peer_port> -d <enables_deduplication> -r <randomess> -e <end_port>"
 
       << std::endl;
   std::cout << "Default values:" << std::endl;
@@ -49,6 +50,7 @@ void print_help() {
   std::cout << "-P: 9090" << std::endl;
   std::cout << "-d: enables deduplication" << std::endl;
   std::cout << "-r: 1.0" << std::endl;
+  std::cout << "-e: 9999" << std::endl;
 }
 
 // Parse command line arguments
@@ -57,7 +59,7 @@ cmd_args parse_args(int argc, char *argv[]) {
   cmd_args args{};
 
   char c{0};
-  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:S:P:dr:")) != -1) {
+  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:S:P:dr:e:")) != -1) {
     switch (c) {
     case 't':
       args.tuples_count = std::stoul(optarg);
@@ -91,6 +93,9 @@ cmd_args parse_args(int argc, char *argv[]) {
       break;
     case 'r':
       args.randomness = std::stof(optarg);
+      break;
+    case 'e':
+      args.end_port = std::stoi(optarg);
       break;
     default:
       print_help();
@@ -226,8 +231,8 @@ int barrier(int socketfd) {
 
 void start_deduplication(DistinctMergeGPU &merger_gpu) { merger_gpu.start(); }
 
-void wait_for_end(TimeKeeper *timekeeper) {
-  int socketfd = connect_common("", 9999);
+void wait_for_end(TimeKeeper *timekeeper, int port) {
+  int socketfd = connect_common("", port);
   barrier(socketfd);
 
   timekeeper->snapshot("end", true);
@@ -244,7 +249,7 @@ int main(int argc, char *argv[]) {
 
   TimeKeeper *timekeeper = new TimeKeeper();
 
-  std::thread end_thread(wait_for_end, timekeeper);
+  std::thread end_thread(wait_for_end, timekeeper, args.end_port);
 
   std::cout << std::unitbuf;
 
