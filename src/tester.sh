@@ -10,8 +10,8 @@
 #SBATCH --time=03:00:00
 #SBATCH --output=deduplication_%j.log
 
-module load cuda/12.6
-module load ucx/1.16
+# module load cuda/12.6
+# module load ucx/1.16
 
 # Shared config
 CHUNK_SIZE=$((1024 * 1024))
