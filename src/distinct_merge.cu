@@ -110,7 +110,7 @@ void DistinctMerge::sender() {
         }
       }
       this->rdma_client->send_finish();
-      std::cout << "Sender thread finished sending counter=-1" << std::endl;
+      // std::cout << "Sender thread finished sending counter=-1" << std::endl;
 
       this->rdma_client->finish();
       while (!this->rdma_client->done_flushing)
@@ -198,8 +198,8 @@ void DistinctMergeGPU::exec(int start_index) {
 }
 
 void DistinctMergeGPU::start() {
-  std::cout << std::unitbuf;
-  std::cout << "Starting GPU merger" << std::endl;
+  // std::cout << std::unitbuf;
+  // std::cout << "Starting GPU merger" << std::endl;
 
   int threads_count = this->tuples_count / this->chunk_size;
 

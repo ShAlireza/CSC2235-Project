@@ -9,8 +9,8 @@
 
 static void send_cb(void *request, ucs_status_t status, void *user_data) {
   int id = (int)(uintptr_t)user_data;
-  std::cout << "Client: AM message " << id
-            << " sent (status = " << ucs_status_string(status) << ")\n";
+  // std::cout << "Client: AM message " << id
+  //           << " sent (status = " << ucs_status_string(status) << ")\n";
 }
 
 static void rdma_cb(void *request, ucs_status_t status, void *user_data) {
@@ -218,12 +218,12 @@ void UcxRdmaClient::sender_loop() {
 
   // std::cout << "UcxRdmaClient: Sender loop flushed.\n";
   // Print timestamp in nanoseconds
-  auto now = std::chrono::high_resolution_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
-          .count();
-  std::cout << "RDMA Client: Sender loop finished at timestamp " << duration
-            << "\n";
+  // auto now = std::chrono::high_resolution_clock::now();
+  // auto duration =
+  //     std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
+  //         .count();
+  // std::cout << "RDMA Client: Sender loop finished at timestamp " << duration
+  //           << "\n";
   this->timekeeper->snapshot("t3-end", true);
   this->done_flushing = true;
 }

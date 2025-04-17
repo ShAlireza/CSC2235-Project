@@ -157,7 +157,7 @@ public:
     // TODO: this function check the send buffer and sends data whenever it
     // reached the threshold
 
-    std::cout << "In sender thread" << std::endl;
+    // std::cout << "In sender thread" << std::endl;
     while (true) {
 
       // std::cout << "Sender thread: checking send buffer" << std::endl;
@@ -341,17 +341,17 @@ static int init_worker(ucp_context_h ucp_context, ucp_worker_h *ucp_worker) {
 }
 
 void send_cb(void *request, ucs_status_t status, void *user_data) {
-  printf("Client: AM message sent successfully (status = %s)\n",
-         ucs_status_string(status));
+  // printf("Client: AM message sent successfully (status = %s)\n",
+  //        ucs_status_string(status));
 }
 
 void handle_request(void *req, const char *label, ucp_worker_h worker) {
   if (UCS_PTR_IS_PTR(req)) {
     while (ucp_request_check_status(req) == UCS_INPROGRESS) {
-      printf("Progressing %s\n", label);
+      // printf("Progressing %s\n", label);
       ucp_worker_progress(worker);
     }
-    printf("Freeing %s request %p\n", label, req);
+    // printf("Freeing %s request %p\n", label, req);
     ucp_request_free(req);
   } else if (!UCS_STATUS_IS_ERR((ucs_status_t)(uintptr_t)req)) {
     send_cb(NULL, (ucs_status_t)(uintptr_t)req, NULL);
@@ -366,7 +366,7 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server,
   void *rkey_buffer = NULL;
   size_t rkey_size = 0;
 
-  printf("Pack the rkey for client\n");
+  // printf("Pack the rkey for client\n");
   ucs_status_t status =
       ucp_rkey_pack(server->context, server->memh, &rkey_buffer, &rkey_size);
   if (status != UCS_OK) {
@@ -380,8 +380,8 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server,
   rdma_info_t *info = (rdma_info_t *)msg;
   info->remote_addr = addr_offset; // NEW
   // memcpy(msg + sizeof(rdma_info_t), rkey_buffer, rkey_size);
-  printf("Message size is %ld, rkey size is %ld\n", msg_size, rkey_size);
-  printf("Remote addr is %ld\n", info->remote_addr);
+  // printf("Message size is %ld, rkey size is %ld\n", msg_size, rkey_size);
+  // printf("Remote addr is %ld\n", info->remote_addr);
 
   ucp_request_param_t param = {.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK,
                                .user_data = NULL};
@@ -390,7 +390,7 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server,
   // char *txt = "Hello, UCX!";
   char *x = (char *)malloc(sizeof(uint64_t));
   memcpy(x, &info->remote_addr, sizeof(uint64_t));
-  printf("Sending rkey and remote_addr to client\n");
+  // printf("Sending rkey and remote_addr to client\n");
   void *req1 = ucp_am_send_nbx(ep, AM_ID, NULL, 0, x, sizeof(uint64_t), &param);
   void *req2 =
       ucp_am_send_nbx(ep, AM_ID, NULL, 0, rkey_buffer, rkey_size, &param);
@@ -399,7 +399,7 @@ void send_rkey_to_client(ucp_ep_h ep, ucx_server_t *server,
 
   ucp_rkey_buffer_release(rkey_buffer);
   free(msg);
-  printf("Server: Sent rkey and remote_addr to client\n");
+  // printf("Server: Sent rkey and remote_addr to client\n");
 }
 
 ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
@@ -411,7 +411,7 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
     fprintf(stderr, "Error: server is NULL!\n");
     return UCS_ERR_INVALID_PARAM;
   }
-  printf("Server received AM: %s\n", (char *)data);
+  // printf("Server received AM: %s\n", (char *)data);
 
   char *token = strtok((char *)data, " ");
   if (token != NULL) {
@@ -424,8 +424,8 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
 
   server->clients_ready++; // NEW
 
-  printf("Server: Received chunk size %ld and buffer size %ld\n",
-         server->chunk_size, server->buffer_size);
+  // printf("Server: Received chunk size %ld and buffer size %ld\n",
+         // server->chunk_size, server->buffer_size);
 
   // Only allocate the buffer if both clients are ready NEW
 
@@ -460,9 +460,9 @@ ucs_status_t am_recv_cb(void *arg, const void *header, size_t header_length,
       fprintf(stderr, "ucp_mem_map failed: %s\n", ucs_status_string(status));
       return status;
     }
-    printf("Server RDMA buffer allocated at %p\n", server->rdma_buffer);
-    printf("Server RDMA buffer size is %ld\n", total_size);
-    printf("Server: Both clients are ready, buffer allocated\n");
+    // printf("Server RDMA buffer allocated at %p\n", server->rdma_buffer);
+    // printf("Server RDMA buffer size is %ld\n", total_size);
+    // printf("Server: Both clients are ready, buffer allocated\n");
 
     // Now send the rkey back to the clients
     for (int i = 0; i < MAX_CLIENTS; i++) { // NEW
@@ -486,7 +486,7 @@ void on_connection(ucp_conn_request_h conn_request, void *arg) {
                                .conn_request = conn_request};
   ucp_ep_create(worker, &ep_params, &client_eps[client_count]);
   client_count++;
-  printf("Server: client connected\n");
+  // printf("Server: client connected\n");
 }
 
 int start_ucx_server(const cmd_args_t &args) {
@@ -509,14 +509,14 @@ int start_ucx_server(const cmd_args_t &args) {
     fprintf(stderr, "failed to ucp_init (%s)\n", ucs_status_string(status));
     return -1;
   }
-  printf("Context initialized\n");
+  // printf("Context initialized\n");
 
   if (init_worker(server->context, &(server->worker)) != 0) {
     fprintf(stderr, "failed to init_worker\n");
     ucp_cleanup(server->context);
     return -1;
   }
-  printf("Worker initialized\n");
+  // printf("Worker initialized\n");
 
   // Set AM callback
   // ASSUMPTION: First message received by the server will be the chunk size and
@@ -540,31 +540,11 @@ int start_ucx_server(const cmd_args_t &args) {
       .sockaddr = {.addr = (struct sockaddr *)&addr, .addrlen = sizeof(addr)},
       .conn_handler = {.cb = on_connection, .arg = server->worker}};
   ucp_listener_create(server->worker, &listener_params, &(server->listener));
-  printf("Server is listening on port %d\n", args.port);
+  // printf("Server is listening on port %d\n", args.port);
 
   while (1) {
     ucp_worker_progress(server->worker);
 
-    // if (server->rdma_buffer != NULL) {
-    //   int *buffer = (int *)server->rdma_buffer;
-    //   size_t entries_per_buffer = server->buffer_size / sizeof(int);
-    //
-    //   printf("=== Buffer 1 ===\n");
-    //   for (size_t i = 0; i < entries_per_buffer; i++) {
-    //     printf("%d ", buffer[i]);
-    //   }
-    //   printf("\n");
-    //
-    //   printf("=== Buffer 2 ===\n");
-    //   for (size_t i = 0; i < entries_per_buffer; i++) {
-    //     printf("%d ", buffer[entries_per_buffer + i]);
-    //   }
-    //   printf("\n");
-    //
-    //   printf("------------------------------------------------------------\n");
-    // }
-    //
-    // Check if the last element in both halves is non-zero
     if (server->initialize_threads) {
       unsigned long client2_addr = (unsigned long)(server->rdma_buffer) +
                                    server->buffer_size + sizeof(int);
@@ -587,41 +567,6 @@ int start_ucx_server(const cmd_args_t &args) {
 
       break;
     }
-    // if (server->rdma_buffer != NULL &&
-    //     (((int *)server->rdma_buffer)[0] == -1) &&
-    //     (((int *)server->rdma_buffer)[server->buffer_size / sizeof(int) + 1]
-    //     ==
-    //      -1)) {
-    // sleep(2);
-    // printf("Both clients finished sending data\n");
-    // server->merger->finish();
-    // break;
-    // Now that they are full, we should iterate over the buffer and use the
-    // seen values map to check if we've seen the value before. If the value
-    // is unique, we can put it into the send_buffer. Otherwise, we can ignore
-    // it.
-    // int *input = (int *)server->rdma_buffer;
-    // int *send_buffer = (int *)server->send_buffer;
-    // int total_entries = 2 * (server->buffer_size / sizeof(int));
-    // printf("Total entries: %d\n", total_entries);
-    // int unique_index = 0;
-
-    // for (size_t i = 0; i < total_entries; i++) {
-    //   int value = input[i];
-    //   printf("Value: %d\n", value);
-    //   if (server->seen_values.find(value) ==
-    //       server->seen_values.end()) { // if not found
-    //     printf("Value not found in map\n");
-    //     server->seen_values.emplace(value, true);
-    //     printf("Adding value to map\n");
-    //     // Instead of writing at send_buffer[i], use unique_index
-    //     send_buffer[unique_index] = value;
-    //     unique_index++;
-    //     printf("Unique value: %d stored at index %d\n", value,
-    //            unique_index - 1);
-    //   }
-    // }
-    // }
 
     usleep(1000);
   }
@@ -641,7 +586,7 @@ int start_ucx_server(const cmd_args_t &args) {
 
     unsigned long total_time_ns{0};
 
-    std::cout << "Finding temp storage for SortKeys" << std::endl;
+    // std::cout << "Finding temp storage for SortKeys" << std::endl;
 
     cub::DeviceRadixSort::SortKeys(
         d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
@@ -711,16 +656,16 @@ int start_ucx_server(const cmd_args_t &args) {
 
     // total_time_ns += duration;
 
-    std::cout << "Total time for sorting and deduplication on destination GPU: "
-              << total_time_ns << " ns" << std::endl;
+    // std::cout << "Total time for sorting and deduplication on destination GPU: "
+    //           << total_time_ns << " ns" << std::endl;
 
     int h_deduplicated_array_size = 0;
 
     CUDA_CHECK(cudaMemcpy(&h_deduplicated_array_size, deduplicated_array_size,
                           sizeof(int), cudaMemcpyDeviceToHost));
 
-    std::cout << "Deduplication size: " << h_deduplicated_array_size
-              << std::endl;
+    // std::cout << "Deduplication size: " << h_deduplicated_array_size
+    //           << std::endl;
     server->merger->current_offset = h_deduplicated_array_size;
 
     cudaFree(d_temp_storage);
@@ -733,10 +678,10 @@ int start_ucx_server(const cmd_args_t &args) {
              2 * server->buffer_size, cudaMemcpyDeviceToHost);
 
   std::cout << "Offset value: " << server->merger->current_offset << std::endl;
-  for (int i = 0; i < 10; i++) {
-    std::cout << verification[i] << " ";
-  }
-  std::cout << std::endl;
+  // for (int i = 0; i < 10; i++) {
+  //   std::cout << verification[i] << " ";
+  // }
+  // std::cout << std::endl;
 
   // Print seen values map from merger
   // for (auto it : server->merger->seen_values) {
