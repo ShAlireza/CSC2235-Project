@@ -54,9 +54,8 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
   std::default_random_engine rng(std::random_device{}());
   std::uniform_int_distribution<int> dist(0, unique_values - 1);
 
-  int val = offset + dist(rng);
-
   for (int j = 0; j < tuples_count; j++) {
+    int val = offset + dist(rng);
     if (randomness_factor == 0.0f) {
       val = offset + j;
     }
