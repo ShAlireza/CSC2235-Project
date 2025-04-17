@@ -300,7 +300,7 @@ int main(int argc, char *argv[]) {
   std::cout << "t1: " << t1 << " ns" << std::endl;
   std::cout << "t2: " << t2 << " ns" << std::endl;
 
-  std::cout << "Tuples sent: " << rdma_client->current_offset << std::endl;
+  std::cout << "Tuples sent: " << rdma_client->current_offset / sizeof(int) << std::endl;
 
   return 0;
 }
