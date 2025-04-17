@@ -10,6 +10,9 @@
 #SBATCH --time=03:00:00
 #SBATCH --output=deduplication_%j.log
 
+module load cuda/12.6
+module load ucx/1.16
+
 # Shared config
 CHUNK_SIZE=$((1024 * 1024))
 TUPLES_COUNTS=(
@@ -83,13 +86,15 @@ echo "Server IP: $SERVER_IP"
 echo "Client1 IP: $CLIENT1_IP"
 
 ROOT_DIR=$PWD/experiments
+mkdir -p "$ROOT_DIR"
 
 # Start the server once
 #
 for randomness in "${RANDOMNESS_VALUES[@]}"; do
   for (( i=0; i<${#TUPLES_COUNTS[@]}; i++ )); do 
     DIR="$ROOT_DIR/${TUPLES_COUNTS[i]}_tuples_${randomness}_randomness"
-  
+    mkdir -p "$DIR"
+
     echo "=== Testing with TUPLE_COUNT = ${TUPLES_COUNTS[i]} ==="
   
     srun --ntasks=1 --nodelist=$SERVER_NODE ./ucx_rdma_server \
@@ -117,7 +122,7 @@ for randomness in "${RANDOMNESS_VALUES[@]}"; do
     wait $CLIENT2_PID
   
     wait $SERVER_PID
-    echo "--- Finished test for $TUPLE_COUNT tuples ---"
+    echo "--- Finished test for ${TUPLES_COUNTS[i]} tuples ---"
     sleep 5
   done
 done
