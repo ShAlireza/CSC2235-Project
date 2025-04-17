@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
 
   UcxRdmaClient *rdma_client = new UcxRdmaClient(
       args.server_ip, args.server_port, args.tuples_count * 2 * sizeof(int),
-      args.chunk_size * sizeof(int));
+      args.chunk_size * sizeof(int), timekeeper);
   merger.set_rdma_client(rdma_client);
   merger_gpu1.cpu_merger = &merger;
   merger_gpu2.cpu_merger = &merger;
