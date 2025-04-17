@@ -1,3 +1,4 @@
+#include "timekeeper.h"
 #include <arpa/inet.h>
 #include <cstring>
 #include <cub/cub.cuh>
@@ -14,7 +15,6 @@
 #include <thread>
 #include <ucp/api/ucp.h>
 #include <unistd.h>
-#include "timekeeper.h"
 
 #define CUDA_CHECK(call)                                                       \
   do {                                                                         \
@@ -90,6 +90,8 @@ private:
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
 
+  TimeKeeper *timekeeper{nullptr};
+
   std::mutex send_buffer_mutex{};
   std::mutex seen_values_mutex{};
 
@@ -105,7 +107,8 @@ public:
   bool done_flushing{false};
 
   DistinctMergeDest() = default;
-  DistinctMergeDest(ssize_t send_buffer_size) {
+  DistinctMergeDest(ssize_t send_buffer_size, TimeKeeper *timekeeper)
+      : timekeeper(timekeeper) {
     cudaMallocHost((void **)&this->send_buffer, send_buffer_size);
     cudaMalloc((void **)&this->destination_buffer, send_buffer_size);
 
@@ -170,12 +173,14 @@ public:
         if (this->first_chunk_started == false) {
           this->first_chunk_started = true;
           // Print timestamp in nanoseconds
-          auto time_now = std::chrono::high_resolution_clock::now();
-          auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                              time_now.time_since_epoch())
-                              .count();
-          printf("Sender thread: First chunk started at timestamp %ld\n",
-                 duration);
+          // auto time_now = std::chrono::high_resolution_clock::now();
+          // auto duration =
+          // std::chrono::duration_cast<std::chrono::nanoseconds>(
+          //                     time_now.time_since_epoch())
+          //                     .count();
+          // printf("Sender thread: First chunk started at timestamp %ld\n",
+          //        duration);
+          this->timekeeper->snapshot("t5-start", false);
         }
         // std::cout << "Sender thread: Threshold reached - difference: "
         //           << difference << std::endl;
@@ -194,14 +199,15 @@ public:
 
       if (this->finished) {
 
-        std::cout << "Sender thread: checking send buffer" << std::endl;
-        std::cout << "Sender thread: start index: "
-                  << this->send_buffer_start_index << std::endl;
-        std::cout << "Sender thread: end index: " << this->send_buffer_end_index
-                  << std::endl;
-        std::cout << "Sender thread: Sender flushing - difference: "
-                  << difference << std::endl;
-        std::cout << "Sender thread finished" << std::endl;
+        // std::cout << "Sender thread: checking send buffer" << std::endl;
+        // std::cout << "Sender thread: start index: "
+        //           << this->send_buffer_start_index << std::endl;
+        // std::cout << "Sender thread: end index: " <<
+        // this->send_buffer_end_index
+        //           << std::endl;
+        // std::cout << "Sender thread: Sender flushing - difference: "
+        //           << difference << std::endl;
+        // std::cout << "Sender thread finished" << std::endl;
 
         if (difference > 0) {
           int *chunk_ptr = &this->send_buffer[this->send_buffer_start_index];
@@ -215,12 +221,13 @@ public:
         }
 
         // Print timestamp in nanoseconds
-        auto time_now = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                            time_now.time_since_epoch())
-                            .count();
-        printf("Sender thread: Flushing data to GPU at timestamp %ld\n",
-               duration);
+        // auto time_now = std::chrono::high_resolution_clock::now();
+        // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        //                     time_now.time_since_epoch())
+        //                     .count();
+        // printf("Sender thread: Flushing data to GPU at timestamp %ld\n",
+        //        duration);
+        this->timekeeper->snapshot("t5-end", true);
         this->done_flushing = true;
         break;
       }
@@ -240,18 +247,22 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
 
     if (counter != old_counter) {
       if (counter == -1) {
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-transfer-end", false);
+        timekeeper->snapshot("transfer-end", true);
+        timekeeper->snapshot(
+            "client" + std::to_string(client_id) + "-transfer-end", true);
         // Print timestamp in nanoseconds
         // auto time_now = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
         //                     time_now.time_since_epoch())
         //                     .count();
         // printf(
-        //     "[%d]RDMA Server: Received end of stream signal at timestamp %ld\n",
-        //     client_id, duration);
+        //     "[%d]RDMA Server: Received end of stream signal at timestamp
+        //     %ld\n", client_id, duration);
         //
         // auto start_time = std::chrono::high_resolution_clock::now();
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-deduplication-start", false);
+        timekeeper->snapshot("t4-start", false);
+        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
+                             false);
         while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
           if (global_args.deduplicate) {
             int check_value = merger->check_value(buffer[1 + old_counter]);
@@ -267,7 +278,9 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
           // }
           old_counter++;
         }
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-deduplication-end", true);
+        timekeeper->snapshot("t4-end", true);
+        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
+                             true);
         // auto end_time = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
         //                end_time - start_time)
@@ -281,7 +294,9 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
       } else {
         // printf("Server: Received new data from client %d\n", buffer[0]);
         // Process the data
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-deduplication-start", false);
+        timekeeper->snapshot("t4-start", false);
+        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-start",
+                             false);
         // auto start_time = std::chrono::high_resolution_clock::now();
         for (int i = old_counter; i < counter; i++) {
           if (global_args.deduplicate) {
@@ -293,13 +308,15 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
             merger->stage(buffer[1 + i]);
           }
         }
-        timekeeper->snapshot("client" + std::to_string(client_id) + "-deduplication-end", true);
+        timekeeper->snapshot("t4-end", true);
+        timekeeper->snapshot("client" + std::to_string(client_id) + "-t4-end",
+                             true);
         // auto end_time = std::chrono::high_resolution_clock::now();
         // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
         //                     end_time - start_time)
         //                     .count();
         // printf("[%d]RDMA Server: deduplication took %ld\n", client_id,
-               // duration);
+        // duration);
         old_counter = counter;
       }
     }
@@ -553,7 +570,7 @@ int start_ucx_server(const cmd_args_t &args) {
                                    server->buffer_size + sizeof(int);
 
       DistinctMergeDest *merger =
-          new DistinctMergeDest(2 * server->buffer_size);
+          new DistinctMergeDest(2 * server->buffer_size, server->timekeeper);
       server->merger = merger;
 
       std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
@@ -679,9 +696,10 @@ int start_ucx_server(const cmd_args_t &args) {
                               server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
-    server->timekeeper->snapshot("unique-start", true);
+    server->timekeeper->snapshot("unique-end", true);
     // end_time = std::chrono::high_resolution_clock::now();
-    // duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time -
+    // duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time
+    // -
     //                                                                 start_time)
     //                .count();
 
@@ -721,13 +739,37 @@ int start_ucx_server(const cmd_args_t &args) {
   // }
 
   // print last 10 numbers
-  for (int i = server->merger->current_offset - 10;
-       i < server->merger->current_offset; i++) {
-    std::cout << verification[i] << " ";
-  }
-  std::cout << std::endl;
+  // for (int i = server->merger->current_offset - 10;
+  //      i < server->merger->current_offset; i++) {
+  //   std::cout << verification[i] << " ";
+  // }
+  // std::cout << std::endl;
 
   server->timekeeper->print_history();
+
+  unsigned long client0_t4{
+      server->timekeeper->get_duration("client0_t4_end", "client0_t4_start")};
+  unsigned long client1_t4{
+      server->timekeeper->get_duration("client1_t4_end", "client1_t4_start")};
+  unsigned long t4{server->timekeeper->get_duration("t4-end", "t4-start")};
+
+  std::cout << "Client 0 T4 time: " << client0_t4 << " ns" << std::endl;
+  std::cout << "Client 1 T4 time: " << client1_t4 << " ns" << std::endl;
+  std::cout << "T4 time: " << t4 << " ns" << std::endl;
+
+  unsigned long t5{server->timekeeper->get_duration("t5-end", "t5-start")};
+  std::cout << "T5 time: " << t5 << " ns" << std::endl;
+
+  if (!global_args.deduplicate) {
+    unsigned long sort_time{
+        server->timekeeper->get_duration("sort-end", "sort-start")};
+    unsigned long unique_time{
+        server->timekeeper->get_duration("unique-end", "unique-start")};
+
+    std::cout << "Sort time: " << sort_time << " ns" << std::endl;
+    std::cout << "Unique time: " << unique_time << " ns" << std::endl;
+    std::cout << "T6 time: " << sort_time + unique_time << " ns" << std::endl;
+  }
 
   // ucp_mem_unmap(server->context, server->memh);
   // free(server->rdma_buffer);
