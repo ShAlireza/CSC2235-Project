@@ -26,7 +26,7 @@ struct cmd_args {
   std::string peer_ip{""};
   int peer_port{9090};
   bool deduplicate{false};
-  float randomess{1.0f};
+  float randomness{1.0f};
 };
 
 // Print help message
@@ -90,7 +90,7 @@ cmd_args parse_args(int argc, char *argv[]) {
       args.deduplicate = true;
       break;
     case 'r':
-      args.randomess = std::stof(optarg);
+      args.randomness = std::stof(optarg);
       break;
     default:
       print_help();
@@ -241,11 +241,11 @@ int main(int argc, char *argv[]) {
 
   std::cout << "Creating GPU merger 1" << std::endl;
   DistinctMergeGPU merger_gpu1(args.gpu1, args.tuples_count, args.chunk_size,
-                               args.deduplicate, timekeeper);
+                               args.deduplicate, timekeeper, args.randomness);
 
   std::cout << "Creating GPU merger 2" << std::endl;
   DistinctMergeGPU merger_gpu2(args.gpu2, args.tuples_count, args.chunk_size,
-                               args.deduplicate, timekeeper);
+                              args.deduplicate, timekeeper, args.randomness);
 
   std::cout << "Creating CPU merger" << std::endl;
 

@@ -59,13 +59,15 @@ public:
   int *gpu_data{nullptr};
   int *destination_buffer{nullptr};
 
+  float randomness{1.0f};
+
   TimeKeeper *timekeeper{nullptr};
 
   bool deduplicate{false};
 
   bool first_chunk_started{false};
 
-  DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size, bool deduplicate, TimeKeeper *timekeeper);
+  DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size, bool deduplicate, TimeKeeper *timekeeper, float randomness);
 
   DistinctMerge *cpu_merger;
 

@@ -126,14 +126,14 @@ void DistinctMerge::sender() {
 void DistinctMerge::finish() { this->finished = true; }
 
 DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size,
-                                   bool deduplicate, TimeKeeper *timekeeper)
+                                   bool deduplicate, TimeKeeper *timekeeper, float randomness)
     : gpu_id(gpu_id), tuples_count(tuples_count), chunk_size(chunk_size),
-      deduplicate(deduplicate), timekeeper(timekeeper) {
+      deduplicate(deduplicate), timekeeper(timekeeper), randomness(randomness) {
   // TODO: init random data on gpu
   CHECK_CUDA(cudaSetDevice(gpu_id));
   CHECK_CUDA(cudaMalloc((void **)&this->gpu_data, tuples_count * sizeof(int)));
   // WARN: generated data shouldn't include 0 (always > 0)
-  generate_data(gpu_id, this->gpu_data, tuples_count, 1.0,
+  generate_data(gpu_id, this->gpu_data, tuples_count, this->randomness,
                 tuples_count * gpu_id + 1);
 
   // TODO: allocate destination buffer on cpu
