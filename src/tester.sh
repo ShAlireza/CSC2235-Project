@@ -7,11 +7,11 @@
 ##SBATCH --gpus-per-node=2
 #SBATCH --gres=gpu:v100l:2
 #SBATCH --mem=16G
-#SBATCH --time=03:00:00
+#SBATCH --time=01:30:00
 #SBATCH --output=deduplication_%j.log
 
-# module load cuda/12.6
-# module load ucx/1.16
+module load cuda/12.6
+module load ucx/1.16
 
 # Shared config
 CHUNK_SIZE=$((1024 * 1024))
@@ -97,7 +97,7 @@ for randomness in "${RANDOMNESS_VALUES[@]}"; do
 
     echo "=== Testing with TUPLE_COUNT = ${TUPLES_COUNTS[i]} ==="
   
-    srun --ntasks=1 --nodelist=$SERVER_NODE ./ucx_rdma_server \
+    srun --ntasks=1 --nodelist=$SERVER_NODE ./RDMA/ucx_rdma_server \
       -p $SERVER_PORT -t ${CHUNK_SIZES[i]} -d &> "$DIR/server.log" &
   
     SERVER_PID=$!

@@ -2,9 +2,10 @@
 NVCC = nvcc
 CXX = g++
 
-UCX_INCLUDE = -I$(UCX_PATH)/include
-UCX_LIB = -L$(UCX_PATH)/lib -lucp -lucs
-CXXFLAGS = -std=c++17 -pthread $(UCX_INCLUDE)
+# UCX_INCLUDE = -I$(UCX_PATH)/include
+# UCX_LIB = -L$(UCX_PATH)/lib -lucp -lucs
+UCX_LIB = -lucp -lucs
+CXXFLAGS = -std=c++17 -pthread # $(UCX_INCLUDE)
 LDFLAGS = $(UCX_LIB)
 
 # Paths to RDMA source files

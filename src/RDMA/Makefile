@@ -1,10 +1,11 @@
 # UCX installation paths
-UCX_INCLUDE = -I$(UCX_PATH)/include
-UCX_LIB = -L$(UCX_PATH)/lib -lucp -lucs
+# UCX_INCLUDE = -I$(UCX_PATH)/include
+# UCX_LIB = -L$(UCX_PATH)/lib -lucp -lucs
+UCX_LIB = -lucp -lucs
 
 # Compiler settings
 CC = nvcc
-CFLAGS = $(UCX_INCLUDE)
+# CFLAGS = $(UCX_INCLUDE)
 LDFLAGS = $(UCX_LIB)
 
 # Targets
@@ -14,7 +15,7 @@ ucx_server: ucx_server.cpp
 	$(CC) -o ucx_server ucx_server.cpp $(CFLAGS) $(LDFLAGS)
 
 ucx_rdma_server: ucx_rdma_server.cu
-	$(CC) -o ucx_rdma_server ucx_rdma_server.cu $(CFLAGS) $(LDFLAGS) -arch=sm_80
+	$(CC) -o ucx_rdma_server ucx_rdma_server.cu $(CFLAGS) $(LDFLAGS) -arch=sm_70
 
 ucx_rdma_client: ucx_rdma_client.cpp ucx_rdma_client.h
 	$(CC) -c ucx_rdma_client.cpp $(CFLAGS)
