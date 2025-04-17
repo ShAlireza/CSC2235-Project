@@ -288,6 +288,7 @@ int main(int argc, char *argv[]) {
   while (!merger.done_flushing)
     ;
 
+  std::cout << "Closing merger" << std::endl;
   timekeeper->print_history();
 
   unsigned long t1{0};
