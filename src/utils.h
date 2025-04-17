@@ -37,7 +37,7 @@
 // }
 
 void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
-                   int offset = 0, float randomness_factor = 1.0f) {
+                   int offset = 0, float randomness_factor) {
   // Generate random data on CPU
   // simple boundary checks:
   if (randomness_factor < 0.0f) randomness_factor = 0.0f;
@@ -59,6 +59,22 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
       val = offset + j;
     }
     host_buffer[j] = val;
+  }
+    // Transfer data to GPU
+  CHECK_CUDA(cudaSetDevice(gpu_id));
+  CHECK_CUDA(cudaMemcpy(gpu_buffer, host_buffer, tuples_count * sizeof(int),
+                        cudaMemcpyHostToDevice));
+  free(host_buffer);
+}
+
+
+void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
+                   int offset = 0) {
+  // Generate random data on CPU
+  int *host_buffer = (int *)malloc(tuples_count * sizeof(int));
+  cudaEvent_t *timing_events;
+  for (int j = 0; j < tuples_count; j++) {
+    host_buffer[j] = offset + j;
   }
     // Transfer data to GPU
   CHECK_CUDA(cudaSetDevice(gpu_id));
