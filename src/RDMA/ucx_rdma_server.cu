@@ -557,9 +557,9 @@ int start_ucx_server(const cmd_args_t &args) {
       server->merger = merger;
 
       std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
-                                   merger, false, 0);
+                                   merger, false, 0, server->timekeeper);
       std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
-                                   false, 1);
+                                   false, 1, server->timekeeper);
 
       client1_receiver.join();
       client2_receiver.join();
