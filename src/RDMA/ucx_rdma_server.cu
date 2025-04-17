@@ -824,7 +824,7 @@ int start_ucx_server(const cmd_args_t &args) {
     cudaFree(sorted_array);
   } else {
     int socket1 = connect_common(global_args.client1_ip, 9999);
-    int socket2 = connect_common(global_args.client2_ip, 9999);
+    int socket2 = connect_common(global_args.client2_ip, 9999 + 1);
 
     if (barrier(socket1) != 0) {
       std::cerr << "Error in barrier" << std::endl;
