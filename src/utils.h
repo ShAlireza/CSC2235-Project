@@ -62,7 +62,7 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
     }
     host_buffer[j] = val;
   }
-  for (int j = 0; j < 10; j++) { // Print first 10 values
+  for (int j = 0; j < tuples_count; j++) { // Print first 10 values
     std::cout << host_buffer[j] << " ";
   }
   std::cout << std::endl;
