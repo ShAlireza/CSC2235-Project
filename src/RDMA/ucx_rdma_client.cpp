@@ -36,8 +36,8 @@ static ucs_status_t rkey_recv_cb(void *arg, const void *header,
 }
 
 UcxRdmaClient::UcxRdmaClient(const std::string &server_ip, int server_port, size_t buffer_size,
-                             size_t chunk_size)
-    : buffer_size(buffer_size), chunk_size(chunk_size) {
+                             size_t chunk_size, TimeKeeper *timekeeper)
+    : buffer_size(buffer_size), chunk_size(chunk_size), timekeeper(timekeeper) {
   init_ucx(server_ip, server_port);
   send_metadata();
   wait_for_rkey();
@@ -119,16 +119,18 @@ void UcxRdmaClient::wait_for_rkey() {
 }
 
 void UcxRdmaClient::send_chunk(int *data, size_t size) {
-  if (!this->first_chunk_started) {
-    this->first_chunk_started = true;
+  // if (!this->first_chunk_started) {
+  //   this->first_chunk_started = true;
     // Print timestamp in nanoseconds
-    auto now = std::chrono::high_resolution_clock::now();
-    auto duration =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
-          .count();
-    std::cout << "RDMA Client: First chunk started at timestamp " << duration
-            << "\n";
-  }
+  //   auto now = std::chrono::high_resolution_clock::now();
+  //   auto duration =
+  //     std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
+  //         .count();
+  //   std::cout << "RDMA Client: First chunk started at timestamp " << duration
+  //           << "\n";
+  // }
+  this->timekeeper->snapshot("t4-start", false);
+
   ucp_request_param_t put_param = {};
   put_param.op_attr_mask =
       UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FIELD_USER_DATA;
@@ -217,12 +219,15 @@ void UcxRdmaClient::sender_loop() {
 
   // std::cout << "UcxRdmaClient: Sender loop flushed.\n";
   // Print timestamp in nanoseconds
-  auto now = std::chrono::high_resolution_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
-          .count();
-  std::cout << "RDMA Client: Sender loop finished at timestamp " << duration
-            << "\n";
+  // auto now = std::chrono::high_resolution_clock::now();
+  // auto duration =
+  //     std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
+  //         .count();
+  // std::cout << "RDMA Client: Sender loop finished at timestamp " << duration
+  //           << "\n";
+
+  this->timekeeper->snapshot("t4-end", false);
+
   this->done_flushing = true;
 }
 

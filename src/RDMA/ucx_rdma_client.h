@@ -1,5 +1,6 @@
 #pragma once
 
+#include "timekeeper.h"
 #include <arpa/inet.h>
 #include <mutex>
 #include <queue>
@@ -10,10 +11,12 @@
 class UcxRdmaClient {
 public:
   UcxRdmaClient(const std::string &server_ip, int server_port, size_t buffer_size,
-                size_t chunk_size);
+                size_t chunk_size, TimeKeeper *timekeeper);
   ~UcxRdmaClient();
 
   bool first_chunk_started{false};
+
+  TimeKeeper *timekeeper;
 
   void send_chunk(int *data, size_t size);
   void send_finish();
