@@ -96,10 +96,13 @@ void UcxRdmaClient::init_ucx(const std::string &server_ip, int server_port) {
   ep_params.sockaddr.addrlen = sizeof(addr);
   ep_params.err_handler.cb = nullptr;
   ep_params.err_handler.arg = nullptr;
+  std::cout << "Creating client ucp endpoint" << std::endl;
   ucp_ep_create(worker, &ep_params, &ep);
 }
 
 void UcxRdmaClient::send_metadata() {
+  std::cout << "Sending metadata to server: buffer_size = " << buffer_size
+            << ", chunk_size = " << chunk_size << "\n";
   std::string msg =
       std::to_string(chunk_size) + " " + std::to_string(buffer_size);
   ucp_request_param_t param = {};
