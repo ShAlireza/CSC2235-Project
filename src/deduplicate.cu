@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
 
   std::cout << "Creating GPU merger 2" << std::endl;
   DistinctMergeGPU merger_gpu2(args.gpu2, args.tuples_count, args.chunk_size,
-                              args.deduplicate, timekeeper, args.randomness);
+                               args.deduplicate, timekeeper, args.randomness);
 
   std::cout << "Creating CPU merger" << std::endl;
 
@@ -268,6 +268,11 @@ int main(int argc, char *argv[]) {
   merger_gpu2.cpu_merger = &merger;
 
   std::cout << "Received Rkey from server" << std::endl;
+
+  if (!args.peer_ip.empty()) {
+    sleep(5);
+  }
+
   int socketfd = connect_common(args.peer_ip, args.peer_port);
 
   barrier(socketfd);
