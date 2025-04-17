@@ -213,7 +213,7 @@ void DistinctMergeGPU::start() {
   }
 
   // Print timestamp in nanoseconds
-  this->timekeeper->snapshot("t1-end(Last GPU Chunk Received - Includes deduplication)");
+  this->timekeeper->snapshot("t1-end"); // (Last GPU Chunk Received - Includes deduplication)
   // auto time = std::chrono::high_resolution_clock::now();
   // auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
   //                    time.time_since_epoch())

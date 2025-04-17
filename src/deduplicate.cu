@@ -274,12 +274,12 @@ int main(int argc, char *argv[]) {
   std::cout << "Starting at " << nano_seconds << " ns" << std::endl;
 
   std::cout << "Starting GPU 1 merger" << std::endl;
-  std::thread t1(start_deduplication, std::ref(merger_gpu1));
+  std::thread thread1(start_deduplication, std::ref(merger_gpu1));
   std::cout << "Starting GPU 2 merger" << std::endl;
-  std::thread t2(start_deduplication, std::ref(merger_gpu2));
+  std::thread thread2(start_deduplication, std::ref(merger_gpu2));
 
-  t1.join();
-  t2.join();
+  thread1.join();
+  thread2.join();
 
   merger.finish();
 
@@ -289,6 +289,15 @@ int main(int argc, char *argv[]) {
     ;
 
   timekeeper->print_history();
+
+  unsigned long t1{0};
+  unsigned long t2{0};
+
+  t2 = timekeeper->get_duration("deduplication-end", "deduplication-start");
+  t1 = timekeeper->get_duration("t1-end", "t1-start") - t2;
+
+  std::cout << "t1: " << t1 << " ns" << std::endl;
+  std::cout << "t2: " << t2 << " ns" << std::endl;
 
   return 0;
 }

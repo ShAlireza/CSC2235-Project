@@ -39,6 +39,10 @@ public:
     lock.unlock();
   }
 
+  unsigned long get_duration(std::string first, std::string second) {
+    return times[first] - times[second];
+  }
+
   void print_history() {
     for (const auto &[name, time] : times) {
       std::cout << name << ": " << time << " ns" << std::endl;
