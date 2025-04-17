@@ -667,17 +667,17 @@ int start_ucx_server(const cmd_args_t &args) {
     //                     .count();
     // total_time_ns += duration;
 
-    int *h_sorted_array;
-    cudaMallocHost(&h_sorted_array,
-                   server->merger->current_offset * sizeof(int));
-    cudaMemcpy(h_sorted_array, sorted_array,
-               server->merger->current_offset * sizeof(int),
-               cudaMemcpyDeviceToHost);
-
+    // int *h_sorted_array;
+    // cudaMallocHost(&h_sorted_array,
+    //                server->merger->current_offset * sizeof(int));
+    // cudaMemcpy(h_sorted_array, sorted_array,
+    //            server->merger->current_offset * sizeof(int),
+    //            cudaMemcpyDeviceToHost);
+    //
     // Print sorted array
-    for (int i = 0; i < server->merger->current_offset; i++) {
-      std::cout << h_sorted_array[i] << " ";
-    }
+    // for (int i = 0; i < server->merger->current_offset; i++) {
+    //   std::cout << h_sorted_array[i] << " ";
+    // }
     std::cout << std::endl;
 
     cudaFree(d_temp_storage);

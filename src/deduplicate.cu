@@ -2,6 +2,7 @@
 #include "RDMA/ucx_rdma_client.h"
 #include "distinct_merge.h"
 
+#include <complex>
 #include <cstdlib>
 #include <getopt.h>
 #include <iostream>
@@ -25,6 +26,7 @@ struct cmd_args {
   std::string peer_ip{""};
   int peer_port{9090};
   bool deduplicate{false};
+  float randomess{1.0f};
 };
 
 // Print help message
@@ -32,7 +34,7 @@ void print_help() {
   std::cout
       << "Usage: deduplicate -t <tuples_count> -c <chunk_size> "
          "-s <server_ip> -p <server_port> -1 <gpu1> -2 <gpu2> -b <buffer_size> "
-         "-S <peer_ip> -P <peer_port> -d <enables_deduplication>"
+         "-S <peer_ip> -P <peer_port> -d <enables_deduplication> -r <randomess>"
 
       << std::endl;
   std::cout << "Default values:" << std::endl;
@@ -46,6 +48,7 @@ void print_help() {
   std::cout << "-S: <peer_ip>" << std::endl;
   std::cout << "-P: 9090" << std::endl;
   std::cout << "-d: enables deduplication" << std::endl;
+  std::cout << "-r: 1.0" << std::endl;
 }
 
 // Parse command line arguments
@@ -54,7 +57,7 @@ cmd_args parse_args(int argc, char *argv[]) {
   cmd_args args{};
 
   char c{0};
-  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:S:P:d")) != -1) {
+  while ((c = getopt(argc, argv, "t:c:s:p:1:2:b:S:P:dr:")) != -1) {
     switch (c) {
     case 't':
       args.tuples_count = std::stoul(optarg);
@@ -85,6 +88,9 @@ cmd_args parse_args(int argc, char *argv[]) {
       break;
     case 'd':
       args.deduplicate = true;
+      break;
+    case 'r':
+      args.randomess = std::stof(optarg);
       break;
     default:
       print_help();
@@ -300,7 +306,8 @@ int main(int argc, char *argv[]) {
   std::cout << "t1: " << t1 << " ns" << std::endl;
   std::cout << "t2: " << t2 << " ns" << std::endl;
 
-  std::cout << "Tuples sent: " << rdma_client->current_offset / sizeof(int) << std::endl;
+  std::cout << "Tuples sent: " << rdma_client->current_offset / sizeof(int)
+            << std::endl;
 
   return 0;
 }
