@@ -145,24 +145,26 @@ void DistinctMergeGPU::exec(int start_index) {
   // TODO: Run the deduplication on the chunk (do it later, for now we just
   // assume that all tuples have unique values)
 
-  if (!this->first_chunk_started) {
-    this->first_chunk_started = true;
+  // if (!this->first_chunk_started) {
+  //   this->first_chunk_started = true;
     // print timestamp in nanoseconds
     // auto start_time = std::chrono::high_resolution_clock::now();
     // auto start_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
     //                          start_time.time_since_epoch())
     //                          .count();
 
-    this->timekeeper->snapshot("t1-start");
     // std::cout << "GPU: " << this->gpu_id
     //           << " - First chunk started at: " << start_time_ns << std::endl;
-  }
+  // }
 
+  this->timekeeper->snapshot("t1-start", false);
   // TODO: Send the deduplicated chunk to CPU
   auto start_time = std::chrono::high_resolution_clock::now();
+  this->timekeeper->snapshot("memcpy-start", false);
   CHECK_CUDA(cudaMemcpy(
       this->destination_buffer + start_index, this->gpu_data + start_index,
       this->chunk_size * sizeof(int), cudaMemcpyDeviceToHost));
+  this->timekeeper->snapshot("memcpy-end", true);
   auto end_time = std::chrono::high_resolution_clock::now();
   auto elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           end_time - start_time)
