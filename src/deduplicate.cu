@@ -294,7 +294,7 @@ int main(int argc, char *argv[]) {
   unsigned long t2{0};
 
   t2 = timekeeper->get_duration("deduplication-end", "deduplication-start");
-  t1 = timekeeper->get_duration("t1-end", "t1-start");
+  t1 = timekeeper->get_duration("t1-end", "t1-start") - t2;
 
   std::cout << "t1: " << t1 << " ns" << std::endl;
   std::cout << "t2: " << t2 << " ns" << std::endl;
