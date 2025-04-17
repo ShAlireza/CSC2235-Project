@@ -623,38 +623,44 @@ int start_ucx_server(const cmd_args_t &args) {
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
 
+    unsigned long total_time_ns{0};
+
     std::cout << "Finding temp storage for SortKeys" << std::endl;
 
-    cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes,
-                                   server->merger->destination_buffer,
-                                   sorted_array, server->merger->current_offset);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    // Allocate temporary storage
-    std::cout << "Allocating temp storage for Sort: " << temp_storage_bytes << std::endl;
-    CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-    // Run sorting operation
-    std::cout << "Running Sort on array" << std::endl;
-    std::cout << "Offset: " << server->merger->current_offset
-              << " Buffer Size: " << 2 * server->buffer_size << std::endl;
     cub::DeviceRadixSort::SortKeys(
         d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
         sorted_array, server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
+    // Allocate temporary storage
+    CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+
+    // Run sorting operation
+    auto start_time = std::chrono::high_resolution_clock::now();
+    cub::DeviceRadixSort::SortKeys(
+        d_temp_storage, temp_storage_bytes, server->merger->destination_buffer,
+        sorted_array, server->merger->current_offset);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        end_time - start_time)
+                        .count();
+    total_time_ns += duration;
 
     int *h_sorted_array;
-    cudaMallocHost(&h_sorted_array, server->merger->current_offset * sizeof(int));
-    cudaMemcpy(h_sorted_array, sorted_array, server->merger->current_offset * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMallocHost(&h_sorted_array,
+                   server->merger->current_offset * sizeof(int));
+    cudaMemcpy(h_sorted_array, sorted_array,
+               server->merger->current_offset * sizeof(int),
+               cudaMemcpyDeviceToHost);
 
     cudaFree(d_temp_storage);
 
     temp_storage_bytes = 0;
     d_temp_storage = nullptr;
-    
-    std::cout << "Finding temp storage for Unique" << std::endl;
+
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
                               server->merger->destination_buffer,
                               deduplicated_array_size,
@@ -662,17 +668,24 @@ int start_ucx_server(const cmd_args_t &args) {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
-
-    std::cout << "Allocating temp storage for Unique: " << temp_storage_bytes << std::endl;
     CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 
-    std::cout << "Running Unique on array" << std::endl;
+    start_time = std::chrono::high_resolution_clock::now();
     cub::DeviceSelect::Unique(d_temp_storage, temp_storage_bytes, sorted_array,
                               server->merger->destination_buffer,
                               deduplicated_array_size,
                               server->merger->current_offset);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
+    end_time = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time -
+                                                                    start_time)
+                   .count();
+
+    total_time_ns += duration;
+
+    std::cout << "Total time for sorting and deduplication on destination GPU: "
+              << total_time_ns << " ns" << std::endl;
 
     int h_deduplicated_array_size = 0;
 
