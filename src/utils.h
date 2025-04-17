@@ -4,10 +4,10 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include <omp.h>
+#include <random>
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
-#include <random>
 
 #define ITEMS_COUNT 1024 * 1024 * 256 * 4 / 2
 
@@ -37,15 +37,17 @@
 // }
 
 void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
-                   int offset = 0, float randomness_factor) {
+                   float randomness_factor, int offset = 0) {
   // Generate random data on CPU
   // simple boundary checks:
-  if (randomness_factor < 0.0f) randomness_factor = 0.0f;
-  if (randomness_factor > 1.0f) randomness_factor = 1.0f;
+  if (randomness_factor < 0.0f)
+    randomness_factor = 0.0f;
+  if (randomness_factor > 1.0f)
+    randomness_factor = 1.0f;
 
   // WARN: number of potential unique values depends on tuples_count
-  size_t unique_values = std::max((size_t)(tuples_count * randomness_factor), (size_t)1);
-
+  size_t unique_values =
+      std::max((size_t)(tuples_count * randomness_factor), (size_t)1);
 
   int *host_buffer = (int *)malloc(tuples_count * sizeof(int));
 
@@ -64,13 +66,12 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
     std::cout << host_buffer[j] << " ";
   }
   std::cout << std::endl;
-    // Transfer data to GPU
+  // Transfer data to GPU
   CHECK_CUDA(cudaSetDevice(gpu_id));
   CHECK_CUDA(cudaMemcpy(gpu_buffer, host_buffer, tuples_count * sizeof(int),
                         cudaMemcpyHostToDevice));
   free(host_buffer);
 }
-
 
 void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
                    int offset = 0) {
@@ -80,7 +81,7 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
   for (int j = 0; j < tuples_count; j++) {
     host_buffer[j] = offset + j;
   }
-    // Transfer data to GPU
+  // Transfer data to GPU
   CHECK_CUDA(cudaSetDevice(gpu_id));
   CHECK_CUDA(cudaMemcpy(gpu_buffer, host_buffer, tuples_count * sizeof(int),
                         cudaMemcpyHostToDevice));
