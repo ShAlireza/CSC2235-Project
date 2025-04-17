@@ -21,7 +21,7 @@ public:
 
     auto it = times.find(name);
     if (it != times.end()) {
-      if (overwrite) {
+      if (overwrite && duration > it->second) {
         it->second = duration;
       } else {
         lock.unlock();
