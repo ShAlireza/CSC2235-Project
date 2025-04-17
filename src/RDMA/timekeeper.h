@@ -17,20 +17,18 @@ public:
                         now.time_since_epoch())
                         .count();
 
-    std::unique_lock<std::mutex> lock(mtx);
+    std::lock_guard<std::mutex> lock(mtx);
 
     auto it = times.find(name);
     if (it != times.end()) {
       if (overwrite && duration > it->second) {
         it->second = duration;
       } else {
-        lock.unlock();
         return;
       }
     } else {
       times[name] = duration;
     }
-    lock.unlock();
   }
 
   void add_time(std::string name, unsigned long value) {

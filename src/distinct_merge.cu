@@ -116,7 +116,7 @@ void DistinctMerge::sender() {
       while (!this->rdma_client->done_flushing)
         ;
 
-      std::cout << "Rdma client closed" << std::endl;
+      // std::cout << "Rdma client closed" << std::endl;
       this->done_flushing = true;
       break;
     }

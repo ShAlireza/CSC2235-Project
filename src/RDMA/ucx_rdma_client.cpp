@@ -224,7 +224,7 @@ void UcxRdmaClient::sender_loop() {
           .count();
   std::cout << "RDMA Client: Sender loop finished at timestamp " << duration
             << "\n";
-  // this->timekeeper->snapshot("t4-end", true);
+  this->timekeeper->snapshot("t4-end", true);
   this->done_flushing = true;
 }
 
