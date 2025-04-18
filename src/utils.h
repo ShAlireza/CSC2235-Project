@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
+#include <chrono>
 
 #define ITEMS_COUNT 1024 * 1024 * 256 * 4 / 2
 
@@ -50,8 +51,8 @@ void generate_data(int gpu_id, int *gpu_buffer, size_t tuples_count,
       std::max((size_t)(tuples_count * randomness_factor), (size_t)1);
 
   int *host_buffer = (int *)malloc(tuples_count * sizeof(int));
-
-  std::default_random_engine rng(std::random_device{}());
+  unsigned int seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  std::mt19937_64 rng(seed);
   std::uniform_int_distribution<int> dist(0, unique_values - 1);
 
   for (int j = 0; j < tuples_count; j++) {
