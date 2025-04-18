@@ -14,20 +14,20 @@ Client: AM message sent successfully (status = Success)
 Server received all data from clients
 
 Offset value: 13421772
-end: 1744947722764341450 ns
-sort-end: 1744947722753261422 ns
-sort-start: 1744947722715648286 ns
-t4-end: 1744947722701806240 ns
-t4-start: 1744947432227173483 ns
-t5-end: 1744947722712793006 ns
-t5-start: 1744947452405869370 ns
-transfer-end: 1744947481644102832 ns
-unique-end: 1744947722764283203 ns
-unique-start: 1744947722760277366 ns
-t4: 290474632757 ns
-t5: 270306923636 ns
-t4-t5: 290485619523 ns
-Sort time: 37613136 ns
-Unique time: 4005837 ns
-t6: 41618973 ns
-[1744947722.843608] [cdr2638:1323483:0]          rcache.c:701  UCX  WARN  ucp_rcache: destroying inuse region 0xa99c50 [0x1512657fe000..0x1513257fe040] g- rw ref 1 md[0]=self md[1]=tcp md[4]=hfi1_0 md[5]=cma
+end: 1744951950934481583 ns
+sort-end: 1744951950928704253 ns
+sort-start: 1744951950891019318 ns
+t4-end: 1744951950877992738 ns
+t4-start: 1744951950360705461 ns
+t5-end: 1744951950888886800 ns
+t5-start: 1744951950386796348 ns
+transfer-end: 1744951950877991338 ns
+unique-end: 1744951950934428404 ns
+unique-start: 1744951950930424036 ns
+t4: 517287277 ns
+t5: 502090452 ns
+t4-t5: 528181339 ns
+Sort time: 37684935 ns
+Unique time: 4004368 ns
+t6: 41689303 ns
+[1744951951.027905] [cdr2630:648713:0]          rcache.c:701  UCX  WARN  ucp_rcache: destroying inuse region 0x246dc60 [0x14c1bffff000..0x14c27ffff040] g- rw ref 1 md[0]=self md[1]=tcp md[4]=hfi1_0 md[5]=cma
