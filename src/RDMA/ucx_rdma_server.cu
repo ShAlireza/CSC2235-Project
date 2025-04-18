@@ -293,7 +293,7 @@ public:
 };
 
 void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
-                     int client_id, TimeKeeper *timekeeper, size_t chunk_size) {
+                     int client_id, TimeKeeper *timekeeper) {
   int old_counter = 0;
   // printf("Buffer addr: %lu\n", (unsigned long)buffer);
 
@@ -315,58 +315,26 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
         //     %ld\n", client_id, duration);
         //
         // auto start_time = std::chrono::high_resolution_clock::now();
-        // timekeeper->snapshot("t4-start", false);
-        // // timekeeper->snapshot("client" + std::to_string(client_id) +
-        // // "-t4-start",
-        // //                      false);
-        // if 
-        // while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
-        //   if (global_args.deduplicate) {
-        //     int check_value = merger->check_value(buffer[1 + old_counter]);
-        //     if (check_value != -2) {
-        //       merger->stage(check_value);
-        //     }
-        //   } else {
-        //     merger->stage(buffer[1 + old_counter]);
-        //   }
-        //   // if (verbose) {
-        //   //   printf("%d", 1000 + buffer[1 + old_counter]);
-        //   //   printf("x%d ", check_value);
-        //   // }
-        //   old_counter++;
-        // }
-        // timekeeper->snapshot("t4-end", true);
-        //
-        // printf("Server: Received new data from client %d\n", buffer[0]);
-        // Process the data
         timekeeper->snapshot("t4-start", false);
         // timekeeper->snapshot("client" + std::to_string(client_id) +
         // "-t4-start",
         //                      false);
-        // auto start_time = std::chrono::high_resolution_clock::now();
-        if (global_args.deduplicate) {
-          for (int i = old_counter; i < old_counter + chunk_size / sizeof(int); i++) {
-            if (global_args.deduplicate) {
-              int check_value = merger->check_value(buffer[1 + i]);
-              if (check_value != -2) {
-                merger->stage(check_value);
-              }
+        while (buffer[1 + old_counter] != 0 && buffer[1 + old_counter] != -1) {
+          if (global_args.deduplicate) {
+            int check_value = merger->check_value(buffer[1 + old_counter]);
+            if (check_value != -2) {
+              merger->stage(check_value);
             }
+          } else {
+            merger->stage(buffer[1 + old_counter]);
           }
-        } else {
-          merger->stage_buffer(&buffer[1 + old_counter], chunk_size / sizeof(int));
+          // if (verbose) {
+          //   printf("%d", 1000 + buffer[1 + old_counter]);
+          //   printf("x%d ", check_value);
+          // }
+          old_counter++;
         }
         timekeeper->snapshot("t4-end", true);
-        // timekeeper->snapshot("client" + std::to_string(client_id) +
-        // "-t4-end",
-        //                      true);
-        // auto end_time = std::chrono::high_resolution_clock::now();
-        // auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        //                     end_time - start_time)
-        //                     .count();
-        // printf("[%d]RDMA Server: deduplication took %ld\n", client_id,
-        // duration);
-        old_counter = counter;
         // timekeeper->snapshot("client" + std::to_string(client_id) +
         // "-t4-end",
         //                      true);
@@ -757,9 +725,9 @@ int start_ucx_server(const cmd_args_t &args) {
       server->merger = merger;
 
       std::thread client1_receiver(receiver_thread, (int *)server->rdma_buffer,
-                                   merger, false, 0, server->timekeeper, server->chunk_size);
+                                   merger, false, 0, server->timekeeper);
       std::thread client2_receiver(receiver_thread, (int *)client2_addr, merger,
-                                   false, 1, server->timekeeper, server->chunk_size);
+                                   false, 1, server->timekeeper);
 
       client1_receiver.join();
       client2_receiver.join();
