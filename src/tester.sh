@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=deduplication
-## SBATCH --nodelist=cdr2468,cdr2469,cdr2470
+#SBATCH --nodelist=cdr2631,cdr2632,cdr2637
 #SBATCH --nodes=3
 #SBATCH --cpus-per-task=8
 #SBATCH --ntasks-per-node=1
 ##SBATCH --gpus-per-node=2
 #SBATCH --gres=gpu:v100l:2
 #SBATCH --mem=16G
-#SBATCH --time=01:30:00
+#SBATCH --time=02:00:00
 #SBATCH --output=deduplication_%j.log
 
 module load cuda/12.6
@@ -24,7 +24,7 @@ TUPLES_COUNTS=(
   $((32 * 1024 * 1024))
   $((64 * 1024 * 1024))
   $((128 * 1024 * 1024))
-  $((256 * 1024 * 1024))
+ #  $((256 * 1024 * 1024))
 )
 
 CHUNKS_COUNTS=(
@@ -44,7 +44,7 @@ CHUNK_SIZES=(
   $((32 * 256 * 1024))
   $((64 * 256 * 1024))
   $((128 * 256 * 1024))
-  $((256 * 256 * 1024))
+  #$((256 * 256 * 1024))
 )
 
 # THRESHOLD=$((CHUNK_SIZE))
@@ -57,12 +57,13 @@ RANDOMNESS_VALUES=(
   0.8
   1
 )
-SERVER_PORT=13337
+SERVER_PORT=8000
 PEER_PORT=9090
 
 # Temporary file to store the server IP
 SERVER_IP_FILE=/scratch/$USER/server_ip_$SLURM_JOB_ID.txt
 CLIENT1_IP_FILE=/scratch/$USER/client1_ip_$SLURM_JOB_ID.txt
+CLIENT2_IP_FILE=/scratch/$USER/client2_ip_$SLURM_JOB_ID.txt
 
 # Identify nodes
 SERVER_NODE=$(scontrol show hostname $SLURM_NODELIST | head -n 1)
@@ -77,13 +78,20 @@ SERVER_IP=$(cat $SERVER_IP_FILE)
 # Write client1 IP to file
 srun --ntasks=1 --nodelist=$CLIENT1_NODE bash -c "hostname -i | awk '{print \$1}' > $CLIENT1_IP_FILE" &
 wait
+
+# Write client2 IP to file
+srun --ntasks=1 --nodelist=$CLIENT2_NODE bash -c "hostname -i | awk '{print \$1}' > $CLIENT2_IP_FILE" &
+wait
+
 CLIENT1_IP=$(cat $CLIENT1_IP_FILE)
+CLIENT2_IP=$(cat $CLIENT2_IP_FILE)
 
 echo "Server Node: $SERVER_NODE"
 echo "Client1 Node: $CLIENT1_NODE"
 echo "Client2 Node: $CLIENT2_NODE"
 echo "Server IP: $SERVER_IP"
 echo "Client1 IP: $CLIENT1_IP"
+echo "Client2 IP: $CLIENT2_IP"
 
 ROOT_DIR=$PWD/experiments
 mkdir -p "$ROOT_DIR"
@@ -95,10 +103,10 @@ for randomness in "${RANDOMNESS_VALUES[@]}"; do
     DIR="$ROOT_DIR/${TUPLES_COUNTS[i]}_tuples_${randomness}_randomness"
     mkdir -p "$DIR"
 
-    echo "=== Testing with TUPLE_COUNT = ${TUPLES_COUNTS[i]} ==="
+    echo "=== Testing with TUPLE_COUNT = ${TUPLES_COUNTS[i]}, RANDOMNESS = ${randomness} ==="
   
     srun --ntasks=1 --nodelist=$SERVER_NODE ./RDMA/ucx_rdma_server \
-      -p $SERVER_PORT -t ${CHUNK_SIZES[i]} -d &> "$DIR/server.log" &
+      -p $SERVER_PORT -t ${CHUNK_SIZES[i]} -1 ${CLIENT1_IP} -2 ${CLIENT2_IP}  &> "$DIR/server.log" &
   
     SERVER_PID=$!
   
@@ -107,7 +115,7 @@ for randomness in "${RANDOMNESS_VALUES[@]}"; do
     # Launch Client 1
     srun --ntasks=1 --nodelist=$CLIENT1_NODE ./deduplicate \
         -t ${TUPLES_COUNTS[i]} -c ${CHUNK_SIZES[i]} -s $SERVER_IP -p $SERVER_PORT \
-        -1 0 -2 1 -b ${CHUNK_SIZES[i]} -r $randomness -d &> "$DIR/client1.log" &
+        -1 0 -2 1 -b ${CHUNK_SIZES[i]} -r $randomness -e 9999 &> "$DIR/client1.log" &
     CLIENT1_PID=$!
   
     sleep 2  # Allow initialization
@@ -115,7 +123,7 @@ for randomness in "${RANDOMNESS_VALUES[@]}"; do
     # Launch Client 2
     srun --ntasks=1 --nodelist=$CLIENT2_NODE ./deduplicate \
         -t ${TUPLES_COUNTS[i]} -c ${CHUNK_SIZES[i]} -s $SERVER_IP -p $SERVER_PORT \
-        -1 0 -2 1 -b ${CHUNK_SIZES[i]} -S $CLIENT1_IP -P $PEER_PORT -r $randomness -d &> "$DIR/client2.log" &
+        -1 0 -2 1 -b ${CHUNK_SIZES[i]} -S $CLIENT1_IP -P $PEER_PORT -r $randomness -e 10000 &> "$DIR/client2.log" &
     CLIENT2_PID=$!
   
     wait $CLIENT1_PID
@@ -124,6 +132,7 @@ for randomness in "${RANDOMNESS_VALUES[@]}"; do
     wait $SERVER_PID
     echo "--- Finished test for ${TUPLES_COUNTS[i]} tuples ---"
     sleep 5
+    ((SERVER_PORT++))
   done
 done
 
