@@ -1,0 +1,25 @@
+srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
+Starting deduplication
+Creating GPU merger 1
+Creating GPU merger 2
+Creating CPU merger
+0
+0
+Creating client ucp endpoint
+Sending metadata to server: buffer_size = 8388608, chunk_size = 1048576
+Client: Received rkey and remote address from server.
+Client: Received rkey and remote address from server.
+Received Rkey from server
+Server listening on port 9090
+Accepted connection
+deduplication-end: 1744932591767294947 ns
+deduplication-start: 1744932590436234827 ns
+end: 1744932591831935305 ns
+start: 1744932590434084366 ns
+t1-end: 1744932590440586870 ns
+t1-start: 1744932590434387335 ns
+t3-end: 1744932591784071490 ns
+t3-start: 1744932590690695574 ns
+t1: 6199535 ns
+t2: 1331060120 ns
+Tuples sent: 1326326
