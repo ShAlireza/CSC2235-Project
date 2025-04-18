@@ -12,16 +12,14 @@ Client: Received rkey and remote address from server.
 Received Rkey from server
 Server listening on port 9090
 Accepted connection
-deduplication-end: 1744938326463689417 ns
-deduplication-start: 1744938266281262262 ns
-end: 1744938359375830792 ns
-start: 1744938266267133203 ns
-t1-end: 1744938266327508194 ns
-t1-start: 1744938266267798049 ns
-t3-end: 1744938326519817966 ns
-t3-start: 1744938273468232426 ns
-t1: 59710145 ns
-t2: 60182427155 ns
+deduplication-end: 1744945937736290638 ns
+deduplication-start: 1744945937631605469 ns
+end: 1744946088438723963 ns
+start: 1744945937628303863 ns
+t1-end: 1744945937639343907 ns
+t1-start: 1744945937628664377 ns
+t3-end: 1744945937803295496 ns
+t3-start: 1744945937643827060 ns
+t1: 10679530 ns
+t2: 104685169 ns
 Tuples sent: 67108864
-srun: error: cdr2610: task 0: Segmentation fault (core dumped)
-srun: Terminating StepId=59024942.19
