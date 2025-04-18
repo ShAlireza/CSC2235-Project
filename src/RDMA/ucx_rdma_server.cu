@@ -194,8 +194,6 @@ public:
 
   void sender() {
     // Send data to the dest GPU
-    // TODO: this function check the send buffer and sends data whenever it
-    // reached the threshold
 
     // std::cout << "In sender thread" << std::endl;
     while (true) {
