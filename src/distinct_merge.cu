@@ -7,10 +7,11 @@
 #include <mutex>
 #include <thread>
 
-DistinctMerge::DistinctMerge(const std::vector<int *> &receive_buffers,
-                             const std::vector<unsigned long> &receive_buffer_sizes,
-                             unsigned long send_buffer_size,
-                             unsigned long send_buffer_threshold, TimeKeeper *timekeeper)
+DistinctMerge::DistinctMerge(
+    const std::vector<int *> &receive_buffers,
+    const std::vector<unsigned long> &receive_buffer_sizes,
+    unsigned long send_buffer_size, unsigned long send_buffer_threshold,
+    TimeKeeper *timekeeper)
     : receive_buffers(receive_buffers),
       receive_buffer_sizes(receive_buffer_sizes),
       send_buffer_threshold(send_buffer_threshold), timekeeper(timekeeper) {
@@ -51,6 +52,18 @@ bool DistinctMerge::stage(int value) {
 
   lock.unlock();
 
+  return true;
+}
+
+bool DistinctMerge::stage_buffer(int *buffer, int tuples_count) {
+  std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+
+  memcpy(&this->send_buffer[this->send_buffer_end_index], buffer,
+         tuples_count * sizeof(int));
+
+  this->send_buffer_end_index += tuples_count;
+
+  lock.unlock();
   return true;
 }
 
@@ -126,7 +139,8 @@ void DistinctMerge::sender() {
 void DistinctMerge::finish() { this->finished = true; }
 
 DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size,
-                                   bool deduplicate, TimeKeeper *timekeeper, float randomness)
+                                   bool deduplicate, TimeKeeper *timekeeper,
+                                   float randomness)
     : gpu_id(gpu_id), tuples_count(tuples_count), chunk_size(chunk_size),
       deduplicate(deduplicate), timekeeper(timekeeper), randomness(randomness) {
   // TODO: init random data on gpu
@@ -137,7 +151,7 @@ DistinctMergeGPU::DistinctMergeGPU(int gpu_id, int tuples_count, int chunk_size,
                 tuples_count * gpu_id + 1);
 
   CHECK_CUDA(cudaMallocHost((void **)&this->destination_buffer,
-                  tuples_count * sizeof(int)));
+                            tuples_count * sizeof(int)));
 }
 
 void DistinctMergeGPU::exec(int start_index) {
@@ -147,14 +161,14 @@ void DistinctMergeGPU::exec(int start_index) {
 
   // if (!this->first_chunk_started) {
   //   this->first_chunk_started = true;
-    // print timestamp in nanoseconds
-    // auto start_time = std::chrono::high_resolution_clock::now();
-    // auto start_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-    //                          start_time.time_since_epoch())
-    //                          .count();
+  // print timestamp in nanoseconds
+  // auto start_time = std::chrono::high_resolution_clock::now();
+  // auto start_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+  //                          start_time.time_since_epoch())
+  //                          .count();
 
-    // std::cout << "GPU: " << this->gpu_id
-    //           << " - First chunk started at: " << start_time_ns << std::endl;
+  // std::cout << "GPU: " << this->gpu_id
+  //           << " - First chunk started at: " << start_time_ns << std::endl;
   // }
 
   // TODO: Send the deduplicated chunk to CPU
@@ -167,8 +181,8 @@ void DistinctMergeGPU::exec(int start_index) {
   // TODO: Check the values and stage them for sending
   this->timekeeper->snapshot("deduplication-start", false);
   // auto start_time = std::chrono::high_resolution_clock::now();
-  for (int i = start_index; i < start_index + this->chunk_size; i++) {
-    if (this->deduplicate) {
+  if (this->deduplicate) {
+    for (int i = start_index; i < start_index + this->chunk_size; i++) {
       int checked_value =
           this->cpu_merger->check_value(this->destination_buffer[i]);
 
@@ -176,9 +190,10 @@ void DistinctMergeGPU::exec(int start_index) {
       if (checked_value != -1) {
         this->cpu_merger->stage(checked_value);
       }
-    } else {
-      this->cpu_merger->stage(this->destination_buffer[i]);
     }
+  } else {
+    this->cpu_merger->stage_buffer(
+        &this->destination_buffer[start_index], this->chunk_size);
   }
 
   this->timekeeper->snapshot("deduplication-end", true);
@@ -189,7 +204,7 @@ void DistinctMergeGPU::exec(int start_index) {
   //                         .count();
   // this->timekeeper->add_time("deduplication", elapsed_time);
   // std::cout << "GPU: " << this->gpu_id
-            // << " - Chunk finished at: " << elapsed_time << std::endl;
+  // << " - Chunk finished at: " << elapsed_time << std::endl;
   // std::cout << "GPU: " << this->gpu_id
   //           << " - Number of inserts: " << number_of_inserts
   //           << " for chunk starting at index: " << start_index
@@ -220,6 +235,7 @@ void DistinctMergeGPU::start() {
   //                    .count();
   //
   // std::cout << "GPU: " << this->gpu_id
-  //           << " - Last chunk finished at (includes deduplication): " << time_ns
+  //           << " - Last chunk finished at (includes deduplication): " <<
+  //           time_ns
   //           << std::endl;
 }

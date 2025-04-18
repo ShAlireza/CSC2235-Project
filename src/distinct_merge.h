@@ -44,6 +44,8 @@ public:
 
   bool stage(int value);
 
+  bool stage_buffer(int *buffer, int tuples_count);
+
   void sender();
 
   void set_rdma_client(UcxRdmaClient *rdma_client);
