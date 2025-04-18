@@ -1,0 +1,129 @@
+
+The following have been reloaded with a version change:
+  1) ucx/1.16.0 => ucx/1.14.1
+
+
+The following have been reloaded with a version change:
+  1) ucx/1.14.1 => ucx/1.16.0
+
+srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
+srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
+srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
+Server Node: cdr2596
+Client1 Node: cdr2610
+Client2 Node: cdr2653
+Server IP: 172.16.146.33
+Client1 IP: 172.16.146.47
+Client2 IP: 172.16.146.90
+=== Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 0.01 ===
+--- Finished test for 1048576 tuples ---
+=== Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 0.01 ===
+--- Finished test for 2097152 tuples ---
+=== Testing with TUPLE_COUNT = 4194304, RANDOMNESS = 0.01 ===
+--- Finished test for 4194304 tuples ---
+=== Testing with TUPLE_COUNT = 8388608, RANDOMNESS = 0.01 ===
+--- Finished test for 8388608 tuples ---
+=== Testing with TUPLE_COUNT = 16777216, RANDOMNESS = 0.01 ===
+--- Finished test for 16777216 tuples ---
+=== Testing with TUPLE_COUNT = 33554432, RANDOMNESS = 0.01 ===
+--- Finished test for 33554432 tuples ---
+=== Testing with TUPLE_COUNT = 67108864, RANDOMNESS = 0.01 ===
+--- Finished test for 67108864 tuples ---
+=== Testing with TUPLE_COUNT = 134217728, RANDOMNESS = 0.01 ===
+--- Finished test for 134217728 tuples ---
+=== Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 0.05 ===
+--- Finished test for 1048576 tuples ---
+=== Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 0.05 ===
+--- Finished test for 2097152 tuples ---
+=== Testing with TUPLE_COUNT = 4194304, RANDOMNESS = 0.05 ===
+--- Finished test for 4194304 tuples ---
+=== Testing with TUPLE_COUNT = 8388608, RANDOMNESS = 0.05 ===
+--- Finished test for 8388608 tuples ---
+=== Testing with TUPLE_COUNT = 16777216, RANDOMNESS = 0.05 ===
+--- Finished test for 16777216 tuples ---
+=== Testing with TUPLE_COUNT = 33554432, RANDOMNESS = 0.05 ===
+--- Finished test for 33554432 tuples ---
+=== Testing with TUPLE_COUNT = 67108864, RANDOMNESS = 0.05 ===
+--- Finished test for 67108864 tuples ---
+=== Testing with TUPLE_COUNT = 134217728, RANDOMNESS = 0.05 ===
+--- Finished test for 134217728 tuples ---
+=== Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 0.1 ===
+--- Finished test for 1048576 tuples ---
+=== Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 0.1 ===
+--- Finished test for 2097152 tuples ---
+=== Testing with TUPLE_COUNT = 4194304, RANDOMNESS = 0.1 ===
+--- Finished test for 4194304 tuples ---
+=== Testing with TUPLE_COUNT = 8388608, RANDOMNESS = 0.1 ===
+--- Finished test for 8388608 tuples ---
+=== Testing with TUPLE_COUNT = 16777216, RANDOMNESS = 0.1 ===
+--- Finished test for 16777216 tuples ---
+=== Testing with TUPLE_COUNT = 33554432, RANDOMNESS = 0.1 ===
+--- Finished test for 33554432 tuples ---
+=== Testing with TUPLE_COUNT = 67108864, RANDOMNESS = 0.1 ===
+--- Finished test for 67108864 tuples ---
+=== Testing with TUPLE_COUNT = 134217728, RANDOMNESS = 0.1 ===
+--- Finished test for 134217728 tuples ---
+=== Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 0.2 ===
+--- Finished test for 1048576 tuples ---
+=== Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 0.2 ===
+--- Finished test for 2097152 tuples ---
+=== Testing with TUPLE_COUNT = 4194304, RANDOMNESS = 0.2 ===
+--- Finished test for 4194304 tuples ---
+=== Testing with TUPLE_COUNT = 8388608, RANDOMNESS = 0.2 ===
+--- Finished test for 8388608 tuples ---
+=== Testing with TUPLE_COUNT = 16777216, RANDOMNESS = 0.2 ===
+--- Finished test for 16777216 tuples ---
+=== Testing with TUPLE_COUNT = 33554432, RANDOMNESS = 0.2 ===
+--- Finished test for 33554432 tuples ---
+=== Testing with TUPLE_COUNT = 67108864, RANDOMNESS = 0.2 ===
+--- Finished test for 67108864 tuples ---
+=== Testing with TUPLE_COUNT = 134217728, RANDOMNESS = 0.2 ===
+--- Finished test for 134217728 tuples ---
+=== Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 0.4 ===
+--- Finished test for 1048576 tuples ---
+=== Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 0.4 ===
+--- Finished test for 2097152 tuples ---
+=== Testing with TUPLE_COUNT = 4194304, RANDOMNESS = 0.4 ===
+--- Finished test for 4194304 tuples ---
+=== Testing with TUPLE_COUNT = 8388608, RANDOMNESS = 0.4 ===
+--- Finished test for 8388608 tuples ---
+=== Testing with TUPLE_COUNT = 16777216, RANDOMNESS = 0.4 ===
+--- Finished test for 16777216 tuples ---
+=== Testing with TUPLE_COUNT = 33554432, RANDOMNESS = 0.4 ===
+--- Finished test for 33554432 tuples ---
+=== Testing with TUPLE_COUNT = 67108864, RANDOMNESS = 0.4 ===
+--- Finished test for 67108864 tuples ---
+=== Testing with TUPLE_COUNT = 134217728, RANDOMNESS = 0.4 ===
+--- Finished test for 134217728 tuples ---
+=== Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 0.8 ===
+--- Finished test for 1048576 tuples ---
+=== Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 0.8 ===
+--- Finished test for 2097152 tuples ---
+=== Testing with TUPLE_COUNT = 4194304, RANDOMNESS = 0.8 ===
+--- Finished test for 4194304 tuples ---
+=== Testing with TUPLE_COUNT = 8388608, RANDOMNESS = 0.8 ===
+--- Finished test for 8388608 tuples ---
+=== Testing with TUPLE_COUNT = 16777216, RANDOMNESS = 0.8 ===
+--- Finished test for 16777216 tuples ---
+=== Testing with TUPLE_COUNT = 33554432, RANDOMNESS = 0.8 ===
+--- Finished test for 33554432 tuples ---
+=== Testing with TUPLE_COUNT = 67108864, RANDOMNESS = 0.8 ===
+--- Finished test for 67108864 tuples ---
+=== Testing with TUPLE_COUNT = 134217728, RANDOMNESS = 0.8 ===
+--- Finished test for 134217728 tuples ---
+=== Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 1 ===
+--- Finished test for 1048576 tuples ---
+=== Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 1 ===
+--- Finished test for 2097152 tuples ---
+=== Testing with TUPLE_COUNT = 4194304, RANDOMNESS = 1 ===
+--- Finished test for 4194304 tuples ---
+=== Testing with TUPLE_COUNT = 8388608, RANDOMNESS = 1 ===
+--- Finished test for 8388608 tuples ---
+=== Testing with TUPLE_COUNT = 16777216, RANDOMNESS = 1 ===
+--- Finished test for 16777216 tuples ---
+=== Testing with TUPLE_COUNT = 33554432, RANDOMNESS = 1 ===
+--- Finished test for 33554432 tuples ---
+=== Testing with TUPLE_COUNT = 67108864, RANDOMNESS = 1 ===
+--- Finished test for 67108864 tuples ---
+=== Testing with TUPLE_COUNT = 134217728, RANDOMNESS = 1 ===
+--- Finished test for 134217728 tuples ---

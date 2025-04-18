@@ -1,0 +1,27 @@
+srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
+Starting deduplication
+Creating GPU merger 1
+Creating GPU merger 2
+Creating CPU merger
+0
+0
+Creating client ucp endpoint
+Sending metadata to server: buffer_size = 402653184, chunk_size = 33554432
+Client: Received rkey and remote address from server.
+Client: Received rkey and remote address from server.
+Received Rkey from server
+Server listening on port 9090
+Accepted connection
+deduplication-end: 1744943844931567191 ns
+deduplication-start: 1744943783165643227 ns
+end: 1744943860510292047 ns
+start: 1744943783151808409 ns
+t1-end: 1744943783215478954 ns
+t1-start: 1744943783152221588 ns
+t3-end: 1744943844965967383 ns
+t3-start: 1744943791148929002 ns
+t1: 63257366 ns
+t2: 61765923964 ns
+Tuples sent: 67108864
+srun: error: cdr2610: task 0: Segmentation fault (core dumped)
+srun: Terminating StepId=59024942.163
