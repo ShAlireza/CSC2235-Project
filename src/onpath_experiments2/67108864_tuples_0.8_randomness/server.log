@@ -1,0 +1,33 @@
+srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
+Server is listening on port 8046
+Server: client connected
+Server received AM: 67108864 805306368
+Server: Received chunk size 67108864 and buffer size 805306368
+Server: client connected
+Server received AM: 67108864 805306368
+Server: Received chunk size 67108864 and buffer size 805306368
+Server: Both clients are ready, buffer allocated
+Client: AM message sent successfully (status = Success)
+Client: AM message sent successfully (status = Success)
+Client: AM message sent successfully (status = Success)
+Client: AM message sent successfully (status = Success)
+Server received all data from clients
+
+Offset value: 98557924
+end: 1744956885301764662 ns
+sort-end: 1744956885299379955 ns
+sort-start: 1744956885288988252 ns
+t4-end: 1744956885280520063 ns
+t4-start: 1744956798289885804 ns
+t5-end: 1744956885286745061 ns
+t5-start: 1744956798299714479 ns
+transfer-end: 1744956885280518497 ns
+unique-end: 1744956885301713475 ns
+unique-start: 1744956885300093366 ns
+t4: 86990634259 ns
+t5: 86987030582 ns
+t4-t5: 86996859257 ns
+Sort time: 10391703 ns
+Unique time: 1620109 ns
+t6: 12011812 ns
+[1744956885.379905] [cdr2630:658991:0]          rcache.c:701  UCX  WARN  ucp_rcache: destroying inuse region 0x2471c60 [0x14cb497fe000..0x14cba97fe040] g- rw ref 1 md[0]=self md[1]=tcp md[4]=hfi1_0 md[5]=cma
