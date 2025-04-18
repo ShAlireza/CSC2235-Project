@@ -10,15 +10,15 @@ Sending metadata to server: buffer_size = 50331648, chunk_size = 4194304
 Client: Received rkey and remote address from server.
 Client: Received rkey and remote address from server.
 Received Rkey from server
-Connected to 172.16.146.47:9090
-deduplication-end: 1744942776330900944 ns
-deduplication-start: 1744942766867133141 ns
-end: 1744942781973939909 ns
-start: 1744942766863798723 ns
-t1-end: 1744942766874307549 ns
-t1-start: 1744942766864188746 ns
-t3-end: 1744942776344957474 ns
-t3-start: 1744942768043519722 ns
-t1: 10118803 ns
-t2: 9463767803 ns
+Connected to 172.16.146.78:9090
+deduplication-end: 1744950290222668507 ns
+deduplication-start: 1744950290210623518 ns
+end: 1744950297508112541 ns
+start: 1744950290209025406 ns
+t1-end: 1744950290211701359 ns
+t1-start: 1744950290209960217 ns
+t3-end: 1744950290337909222 ns
+t3-start: 1744950290212163482 ns
+t1: 1741142 ns
+t2: 12044989 ns
 Tuples sent: 8388608

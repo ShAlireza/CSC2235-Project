@@ -9,12 +9,12 @@ The following have been reloaded with a version change:
 srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
 srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
 srun: warning: can't run 1 processes on 3 nodes, setting nnodes to 1
-Server Node: cdr2596
-Client1 Node: cdr2610
-Client2 Node: cdr2653
-Server IP: 172.16.146.33
-Client1 IP: 172.16.146.47
-Client2 IP: 172.16.146.90
+Server Node: cdr2638
+Client1 Node: cdr2641
+Client2 Node: cdr2644
+Server IP: 172.16.146.75
+Client1 IP: 172.16.146.78
+Client2 IP: 172.16.146.81
 === Testing with TUPLE_COUNT = 1048576, RANDOMNESS = 0.01 ===
 --- Finished test for 1048576 tuples ---
 === Testing with TUPLE_COUNT = 2097152, RANDOMNESS = 0.01 ===
