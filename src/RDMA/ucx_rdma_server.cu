@@ -150,7 +150,8 @@ public:
   DistinctMergeDest(ssize_t send_buffer_size, TimeKeeper *timekeeper)
       : timekeeper(timekeeper) {
     CUDA_CHECK(cudaMallocHost((void **)&this->send_buffer, send_buffer_size));
-    CUDA_CHECK(cudaMalloc((void **)&this->destination_buffer, send_buffer_size));
+    CUDA_CHECK(
+        cudaMalloc((void **)&this->destination_buffer, send_buffer_size));
 
     std::thread sender_thread(&DistinctMergeDest::sender,
                               this); // Start the sender thread
@@ -186,6 +187,18 @@ public:
     // std::cout << "Sender thread: start index: " <<
     // this->send_buffer_start_index
     //           << std::endl;
+
+    lock.unlock();
+
+    return true;
+  }
+
+  bool stage_buffer(int *buffer, int tuples_count) {
+    std::unique_lock<std::mutex> lock(this->send_buffer_mutex);
+
+    memcpy(&this->send_buffer[this->send_buffer_end_index], buffer,
+           tuples_count * sizeof(int));
+    this->send_buffer_end_index += tuples_count;
 
     lock.unlock();
 
@@ -343,15 +356,17 @@ void receiver_thread(int *buffer, DistinctMergeDest *merger, bool verbose,
         // "-t4-start",
         //                      false);
         // auto start_time = std::chrono::high_resolution_clock::now();
-        for (int i = old_counter; i < counter; i++) {
-          if (global_args.deduplicate) {
-            int check_value = merger->check_value(buffer[1 + i]);
-            if (check_value != -2) {
-              merger->stage(check_value);
+        if (global_args.deduplicate) {
+          for (int i = old_counter; i < counter; i++) {
+            if (global_args.deduplicate) {
+              int check_value = merger->check_value(buffer[1 + i]);
+              if (check_value != -2) {
+                merger->stage(check_value);
+              }
             }
-          } else {
-            merger->stage(buffer[1 + i]);
           }
+        } else {
+          merger->stage_buffer(&buffer[1 + old_counter], counter - old_counter);
         }
         timekeeper->snapshot("t4-end", true);
         // timekeeper->snapshot("client" + std::to_string(client_id) +
@@ -734,7 +749,8 @@ int start_ucx_server(const cmd_args_t &args) {
 
   if (!global_args.deduplicate) {
     int *sorted_array;
-    CUDA_CHECK(cudaMalloc(&sorted_array, server->merger->current_offset * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&sorted_array,
+                          server->merger->current_offset * sizeof(int)));
 
     int *deduplicated_array_size;
     CUDA_CHECK(cudaMalloc(&deduplicated_array_size, sizeof(int)));
