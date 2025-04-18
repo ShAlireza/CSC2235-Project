@@ -149,8 +149,8 @@ public:
   DistinctMergeDest() = default;
   DistinctMergeDest(ssize_t send_buffer_size, TimeKeeper *timekeeper)
       : timekeeper(timekeeper) {
-    cudaMallocHost((void **)&this->send_buffer, send_buffer_size);
-    cudaMalloc((void **)&this->destination_buffer, send_buffer_size);
+    CUDA_CHECK(cudaMallocHost((void **)&this->send_buffer, send_buffer_size));
+    CUDA_CHECK(cudaMalloc((void **)&this->destination_buffer, send_buffer_size));
 
     std::thread sender_thread(&DistinctMergeDest::sender,
                               this); // Start the sender thread
@@ -736,10 +736,10 @@ int start_ucx_server(const cmd_args_t &args) {
 
   if (!global_args.deduplicate) {
     int *sorted_array;
-    cudaMalloc(&sorted_array, server->merger->current_offset * sizeof(int));
+    CUDA_CHECK(cudaMalloc(&sorted_array, server->merger->current_offset * sizeof(int)));
 
     int *deduplicated_array_size;
-    cudaMalloc(&deduplicated_array_size, sizeof(int));
+    CUDA_CHECK(cudaMalloc(&deduplicated_array_size, sizeof(int)));
 
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
@@ -840,10 +840,10 @@ int start_ucx_server(const cmd_args_t &args) {
     send_end_message(global_args.client2_ip, 9999 + 1);
   }
 
-  int *verification;
-  cudaMallocHost(&verification, 2 * server->buffer_size);
-  cudaMemcpy(verification, server->merger->destination_buffer,
-             2 * server->buffer_size, cudaMemcpyDeviceToHost);
+  // int *verification;
+  // cudaMallocHost(&verification, 2 * server->buffer_size);
+  // cudaMemcpy(verification, server->merger->destination_buffer,
+  //            2 * server->buffer_size, cudaMemcpyDeviceToHost);
 
   std::cout << "Offset value: " << server->merger->current_offset << std::endl;
   // for (int i = 0; i < 10; i++) {
