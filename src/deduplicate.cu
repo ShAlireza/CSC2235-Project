@@ -374,5 +374,11 @@ int main(int argc, char *argv[]) {
   std::cout << "Tuples sent: " << rdma_client->current_offset / sizeof(int)
             << std::endl;
 
+  free(merger.send_buffer);
+  free(merger_gpu1.destination_buffer);
+  free(merger_gpu2.destination_buffer);
+  cudaFree(merger_gpu1.gpu_data);
+  cudaFree(merger_gpu2.gpu_data);
+
   return 0;
 }

@@ -18,7 +18,6 @@ private:
 
   unsigned long send_buffer_threshold{1024 * 1024};
 
-  int *send_buffer;
   UcxRdmaClient *rdma_client{nullptr};
   int send_buffer_start_index{0};
   int send_buffer_end_index{0};
@@ -32,6 +31,7 @@ private:
   bool finished{false};
 
 public:
+  int *send_buffer;
   std::thread sender_thread{};
   bool done_flushing{false};
   DistinctMerge() = default;
